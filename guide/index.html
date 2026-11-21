@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101211">
+<title>Play on Sound 使い方ガイド</title>
+<meta name="description" content="Play on Sound の機能を、実際の画面と操作動画でやさしく説明するガイドです。">
+<style>
+:root {
+  --bg: #101211; --panel: #181b19; --panel-2: #212522; --edge: #343a36;
+  --ink: #eef0ed; --muted: #9aa39d; --accent: #f2a007; --accent-ink: #1d1400;
+  --good: #b8e07a;
+  --sans: system-ui, -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.75; -webkit-text-size-adjust: 100%; }
+a { color: var(--accent); }
+img, video { display: block; max-width: 100%; }
+.wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); }
+
+/* top bar */
+.bar { position: sticky; top: 0; z-index: 10; background: rgba(16, 18, 17, 0.92); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--edge); }
+.bar .wrap { display: flex; align-items: center; gap: 12px; height: 56px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); flex: 0 0 auto; }
+.brand svg { width: 30px; height: 30px; }
+.brand b { font-size: 14px; letter-spacing: 0.06em; }
+.toc { flex: 1 1 auto; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 0 2px; }
+.toc::-webkit-scrollbar { display: none; }
+.toc a { flex: 0 0 auto; text-decoration: none; color: var(--muted); font-size: 13px; padding: 5px 11px; border-radius: 999px; border: 1px solid transparent; white-space: nowrap; }
+.toc a[aria-current="true"] { color: var(--accent-ink); background: var(--accent); }
+.openapp { flex: 0 0 auto; text-decoration: none; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 13px; padding: 7px 14px; border-radius: 999px; }
+
+/* hero */
+.hero { display: grid; gap: 28px; padding: 44px 0 28px; align-items: center; }
+.hero h1 { margin: 0 0 12px; font-size: clamp(30px, 6vw, 46px); line-height: 1.15; letter-spacing: 0.01em; }
+.hero h1 span { background: linear-gradient(100deg, #ffe0a0, #f2a007 75%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
+.hero p { margin: 0 0 18px; color: var(--muted); font-size: 17px; max-width: 34em; }
+.cta { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn { display: inline-block; text-decoration: none; padding: 11px 20px; border-radius: 12px; font-weight: 700; border: 1px solid var(--edge); color: var(--ink); background: var(--panel-2); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.facts { list-style: none; margin: 22px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.facts li { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 12px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.facts b { display: block; color: var(--ink); font-size: 20px; font-family: var(--mono); }
+
+/* phone frame */
+.phone { width: 100%; max-width: 390px; margin: 0 auto; background: none; border: 0; padding: 0; box-shadow: none; border-radius: 0; }
+.phone > img, .phone > video { width: 100%; height: auto; border-radius: 0; background: #111; outline: 1px solid var(--edge); outline-offset: -1px; }
+.phone.wide { max-width: 844px; }
+.vnote { max-width: 470px; margin: 8px auto 0; font-size: 12.5px; color: var(--muted); text-align: center; }
+.phone.vp { max-width: 470px; }
+.phone.vp > video { aspect-ratio: 776 / 1688; display: block; }
+.cap { margin: 10px auto 0; max-width: 390px; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.5; }
+.phone.wide + .cap { max-width: 844px; }
+
+/* sections */
+.sec { display: grid; gap: 26px; padding: 54px 0; border-top: 1px solid var(--edge); }
+.sec > div { min-width: 0; }
+.tscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.sec .num { display: inline-block; font-family: var(--mono); font-size: 12px; letter-spacing: 0.16em; color: var(--accent); margin-bottom: 6px; }
+.sec h2 { margin: 0 0 12px; font-size: clamp(24px, 4.5vw, 32px); line-height: 1.3; }
+.sec h3 { margin: 24px 0 6px; font-size: 17px; }
+.sec p { margin: 0 0 12px; }
+.sec .lead { color: var(--muted); font-size: 17px; }
+.steps { counter-reset: s; list-style: none; margin: 16px 0; padding: 0; display: grid; gap: 10px; }
+.steps li { counter-increment: s; position: relative; padding: 12px 14px 12px 52px; background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; }
+.steps li::before { content: counter(s); position: absolute; left: 14px; top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font: 700 14px/26px var(--mono); text-align: center; }
+.tip, .warn { margin: 16px 0; padding: 12px 14px; border-radius: 12px; font-size: 14px; line-height: 1.65; border: 1px solid; }
+.tip { background: rgba(184, 224, 122, 0.08); border-color: rgba(184, 224, 122, 0.35); }
+.tip::before { content: "ポイント　"; color: var(--good); font-weight: 700; }
+.warn { background: rgba(242, 160, 7, 0.08); border-color: rgba(242, 160, 7, 0.4); }
+.warn::before { content: "注意　"; color: var(--accent); font-weight: 700; }
+table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--edge); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; letter-spacing: 0.08em; }
+td:first-child { white-space: nowrap; font-weight: 700; }
+kbd { font-family: var(--mono); font-size: 12px; background: var(--panel-2); border: 1px solid var(--edge); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; }
+.legend { list-style: none; margin: 14px 0; padding: 0; display: grid; gap: 8px; }
+.legend li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; }
+.legend i { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font: 700 13px/24px var(--mono); text-align: center; font-style: normal; }
+.cols { display: flex; flex-wrap: wrap; gap: 26px 22px; justify-content: center; }
+.cols figure { margin: 0; flex: 0 1 390px; min-width: 0; }
+details { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; margin: 10px 0; padding: 0 14px; }
+summary { cursor: pointer; padding: 13px 0; font-weight: 700; list-style: none; display: flex; justify-content: space-between; gap: 10px; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "＋"; color: var(--accent); }
+details[open] summary::after { content: "－"; }
+details p { margin: 0 0 14px; color: var(--muted); font-size: 15px; }
+footer { border-top: 1px solid var(--edge); padding: 34px 0 calc(40px + env(safe-area-inset-bottom)); color: var(--muted); font-size: 13px; text-align: center; }
+
+@media (min-width: 860px) {
+  .hero { grid-template-columns: 1fr 390px; padding: 70px 0 44px; }
+  .sec { grid-template-columns: minmax(0, 1fr) 410px; gap: 48px; }
+  .sec.flip { grid-template-columns: 410px minmax(0, 1fr); }
+  .sec.flip .media { order: -1; }
+  .media { align-self: start; }
+  .sec.vid { grid-template-columns: minmax(0, 1fr) 470px; }
+  .sec.vid.flip { grid-template-columns: 470px minmax(0, 1fr); }
+  .sec.full { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .brand b { display: none; }
+  .facts { grid-template-columns: 1fr; }
+  .facts li { display: flex; align-items: baseline; gap: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="ページの先頭へ">
+      <svg viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="gT" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2c322e"/><stop offset="1" stop-color="#111412"/></linearGradient><linearGradient id="gA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd37a"/><stop offset="1" stop-color="#f2a007"/></linearGradient></defs><rect x="1" y="1" width="46" height="46" rx="13" fill="url(#gT)" stroke="#3a403c" stroke-width="1.5"/><path d="M12 14.5v19a1.5 1.5 0 0 0 2.3 1.3l15-9.5a1.5 1.5 0 0 0 0-2.6l-15-9.5A1.5 1.5 0 0 0 12 14.5z" fill="url(#gA)"/><path d="M33.5 18a9 9 0 0 1 0 12" fill="none" stroke="#f2a007" stroke-width="2.6" stroke-linecap="round"/><path d="M38 12.5a16 16 0 0 1 0 23" fill="none" stroke="#f2a007" stroke-opacity="0.5" stroke-width="2.6" stroke-linecap="round"/></svg>
+      <b>GUIDE</b>
+    </a>
+    <nav class="toc" id="toc" aria-label="目次">
+      <a href="#start">画面の見かた</a>
+      <a href="#assign">音を入れる</a>
+      <a href="#play">鳴らす</a>
+      <a href="#modes">再生方法</a>
+      <a href="#mixer">音量・フェード</a>
+      <a href="#lock">ロック</a>
+      <a href="#pad">パッドの設定</a>
+      <a href="#spotify">Spotify</a>
+      <a href="#project">プロジェクト</a>
+      <a href="#prefs">表示・設定</a>
+      <a href="#mobile">iPhone・オフライン</a>
+      <a href="#keys">キー操作</a>
+      <a href="#faq">Q&amp;A</a>
+    </nav>
+    <a class="openapp appLink" href="https://claude.ai/artifact/2AewRccbhyU58P1rbtovsU">アプリを開く</a>
+  </div>
+</header>
+
+<main id="top">
+<div class="wrap">
+
+  <section class="hero">
+    <div>
+      <h1><span>Play on Sound</span><br>使い方ガイド</h1>
+      <p>ライブやイベントの音出しに使える、ブラウザのサンプラーです。パッドをタップするだけで、音楽も効果音もすぐ鳴らせます。このガイドは、実際の画面と操作動画で説明しています。</p>
+      <div class="cta">
+        <a class="btn primary appLink" href="https://claude.ai/artifact/2AewRccbhyU58P1rbtovsU">アプリを開く</a>
+        <a class="btn" href="#assign">まず音を入れてみる</a>
+      </div>
+      <ul class="facts">
+        <li><b>120</b>パッド（音楽60・効果音60）</li>
+        <li><b>4</b>種類の再生方法</li>
+        <li><b>0円</b>インストール不要・オフラインOK</li>
+      </ul>
+    </div>
+    <div>
+      <div class="phone"><img src="img/home.webp" width="780" height="1688" alt="Play on Sound のホーム画面。音楽と効果音のパッドが並んでいる" loading="eager"></div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="sec" id="start">
+    <div>
+      <span class="num">01</span>
+      <h2>画面の見かた</h2>
+      <p class="lead">開くと、上から順に「操作ボタン」「ミキサー」「音楽のパッド」「効果音のパッド」が並んでいます。</p>
+      <ol class="legend">
+        <li><i>1</i><span><b>ヘッダー</b>　左にプロジェクト名、右に「編集」と「メニュー」のボタンがあります。</span></li>
+        <li><i>2</i><span><b>表示窓（緑の枠）</b>　いま触っているパッドの名前・ファイル名・再生方法が出ます。</span></li>
+        <li><i>3</i><span><b>ミキサー</b>　マスター・音楽・効果音の音量と、フェード時間を調整します。</span></li>
+        <li><i>4</i><span><b>MUSIC（音楽）</b>　BGMや曲を入れる場所です。5つのバンク × 12個のパッドがあります。</span></li>
+        <li><i>5</i><span><b>SOUND EFFECTS（効果音）</b>　拍手やブザーなど、短い音を入れる場所です。こちらも5バンク × 12個です。</span></li>
+      </ol>
+      <div class="tip">「バンク」は、パッドのページのようなものです。BANK 1〜5 を切り替えると、別の12個のパッドが出ます。全部で、音楽60個・効果音60個を置けます。</div>
+      <h3>横向きでも使えます</h3>
+      <p>スマホを横にすると、パッドが横に広く並びます。ステージで机に置いて使うときに便利です。</p>
+    </div>
+    <div class="media">
+      <div class="phone"><img src="img/home.webp" width="780" height="1688" alt="ホーム画面（上から、ヘッダー、表示窓、ミキサー、音楽、効果音）" loading="lazy"></div>
+    </div>
+  </section>
+
+  <section class="sec full">
+    <div>
+      <h3 style="margin-top:0">横画面の例</h3>
+      <div class="phone wide"><img src="img/landscape.webp" width="1688" height="780" alt="横向きの画面。パッドが6列に並ぶ" loading="lazy"></div>
+      <p class="cap">横向きにすると、パッドが6列で並びます。</p>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="sec vid" id="assign">
+    <div>
+      <span class="num">02</span>
+      <h2>パッドに音を入れる</h2>
+      <p class="lead">最初は、パッドがすべて空っぽです。「編集」をオンにして、音のファイルを1つずつ入れます。</p>
+      <ol class="steps">
+        <li>右上の<b>「編集」</b>を押してオンにします。パッドのまわりに点線が出ます。</li>
+        <li>音を入れたい<b>パッドをタップ</b>します。設定の窓が開きます。</li>
+        <li><b>「ファイルを選択」</b>を押して、スマホやパソコンの中の音声ファイルを選びます。</li>
+        <li><b>表示名</b>を付けます（例：オープニング）。パッドの上に出る名前です。</li>
+        <li>好きな<b>色</b>を選びます。本番で見分けやすくなります。</li>
+        <li><b>「決定」</b>を押します。もう一度「編集」を押してオフにすると、演奏できます。</li>
+      </ol>
+      <div class="tip">ファイルは、パソコンから<b>パッドへドラッグ＆ドロップ</b>でも入れられます。</div>
+      <div class="warn">1ファイル25MBまでです。曲が長くて入らないときは、音声編集アプリで短くしてください。長い音声は、スマホのメモリをたくさん使います。</div>
+      <p><b>外したいときは：</b>パッドの設定の窓で「音声・リンクを外す」を押します。名前・色・各設定も、最初の状態に戻ります。</p>
+    </div>
+    <div class="media">
+      <div class="phone vp"><video src="video/assign.mp4" poster="video/assign.webp" muted loop playsinline controls preload="metadata" aria-label="パッドに音を入れる操作の動画"></video></div>
+      <p class="vnote">🔊 動画は最初は消音で再生されます。音を聞くには、動画右下のスピーカーを押してください。</p>
+      <p class="cap">編集 → パッドをタップ → ファイル選択 → 名前 → 色 → 決定</p>
+    </div>
+  </section>
+
+  <section class="sec full">
+    <div>
+      <h3 style="margin-top:0">設定の窓（パッドをタップしたとき）</h3>
+      <div class="phone"><img src="img/dialog.webp" width="780" height="1688" alt="パッドの設定の窓" loading="lazy"></div>
+      <p class="cap">ファイル、表示名、Spotify、再生方法、ループ、色、音量などを、この窓で決めます。</p>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="sec flip vid" id="play">
+    <div>
+      <span class="num">03</span>
+      <h2>鳴らす・止める</h2>
+      <p class="lead">「編集」がオフの状態で、パッドをタップするだけで鳴ります。</p>
+      <ul>
+        <li>鳴っているパッドは、<b>白い枠</b>と<b>進行バー</b>で分かります。</li>
+        <li>バンクの見出しに<b>赤い点</b>が付くと、そのバンクのどこかが鳴っています。別のバンクを見ていても、鳴っているのが分かります。</li>
+        <li>「トグル」のパッドは、もう一度タップすると止まります。</li>
+      </ul>
+      <h3>止めるボタン</h3>
+      <table>
+        <tr><th>ボタン</th><th>はたらき</th></tr>
+        <tr><td>全停止</td><td>鳴っている音を、すべて止めます。</td></tr>
+        <tr><td>音楽を停止</td><td>音楽のパッドだけを止めます。</td></tr>
+        <tr><td>効果音を停止</td><td>効果音のパッドだけを止めます。</td></tr>
+        <tr><td>フェード停止</td><td>ゆっくり音量を下げながら、すべて止めます。</td></tr>
+        <tr><td>音 ON / OFF</td><td>押すたびに、全体の音を出す／消すを切り替えます。</td></tr>
+      </table>
+      <div class="tip">パッドの鳴らし方は、1つずつ変えられます。次の「再生方法」を見てください。</div>
+    </div>
+    <div class="media">
+      <div class="phone vp"><video src="video/play.mp4" poster="video/play.webp" muted loop playsinline controls preload="metadata" aria-label="パッドを鳴らす操作の動画"></video></div>
+      <p class="vnote">🔊 動画は最初は消音で再生されます。音を聞くには、動画右下のスピーカーを押してください。</p>
+      <p class="cap">BGMを鳴らし、クロスフェードで次の曲へ。効果音も重ねて鳴らします。</p>
+    </div>
+  </section>
+
+  <section class="sec full">
+    <div>
+      <h3 style="margin-top:0">鳴っているときの画面</h3>
+      <div class="phone"><img src="img/playing.webp" width="780" height="1688" alt="パッドが鳴っている画面。白い枠と進行バーが出ている" loading="lazy"></div>
+      <p class="cap">鳴っているパッドは白い枠で囲まれ、下に進行バーが出ます。</p>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="sec" id="modes">
+    <div>
+      <span class="num">04</span>
+      <h2>4つの再生方法</h2>
+      <p class="lead">パッドごとに「どう鳴らすか」を選べます。パッドの設定の窓にある「再生方法」で変えます。</p>
+      <table>
+        <tr><th>再生方法</th><th>動き</th><th>向いている使い方</th></tr>
+        <tr><td>無制限（重ね再生）</td><td>タップするたびに、重ねて鳴ります。</td><td>拍手、歓声、短い効果音</td></tr>
+        <tr><td>ドラム</td><td>タップするたびに、前の音を止めて、頭から鳴らし直します。</td><td>ドラム、リズム、連打する音</td></tr>
+        <tr><td>トグル</td><td>タップで再生、もう一度タップで停止します。</td><td>BGM、曲</td></tr>
+        <tr><td>押している間だけ</td><td>指を置いている間だけ鳴り、離すと止まります。</td><td>ブザー、アラート音</td></tr>
+      </table>
+      <h3>ループ（くり返し）</h3>
+      <p>「ループ」にチェックを入れると、最後まで鳴ったら最初に戻って、くり返し鳴ります。BGMに便利です。</p>
+      <div class="tip">初期設定は、音楽のパッドが「トグル」、効果音のパッドが「無制限（重ね再生）」です。</div>
+    </div>
+    <div class="media">
+      <div class="phone"><img src="img/dialog.webp" width="780" height="1688" alt="再生方法の選択欄を含む設定の窓" loading="lazy"></div>
+      <p class="cap">「再生方法」と「ループ」は、この窓にあります。</p>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="sec flip" id="mixer">
+    <div>
+      <span class="num">05</span>
+      <h2>音量とフェード</h2>
+      <p class="lead">画面上部のミキサーで、全体の音を整えます。</p>
+      <table>
+        <tr><th>項目</th><th>はたらき</th></tr>
+        <tr><td>マスター</td><td>全体の音量です。初期値は100%です。</td></tr>
+        <tr><td>音楽の音量</td><td>音楽のパッドだけの音量です。</td></tr>
+        <tr><td>効果音の音量</td><td>効果音のパッドだけの音量です。</td></tr>
+        <tr><td>フェード時間</td><td>止めるときや切り替えるときに、音をゆっくり変える長さ（秒）です。</td></tr>
+        <tr><td>クロスフェード</td><td>オンにすると、次の曲を鳴らしたとき、前の曲が重なるように消えていきます。</td></tr>
+      </table>
+      <h3>クロスフェードの使い方</h3>
+      <ol class="steps">
+        <li>「MUSIC」の<b>クロスフェード</b>ボタンを押してオンにします。</li>
+        <li><b>フェード時間</b>を2秒ほどにします。</li>
+        <li>鳴っている曲があるときに、別の曲のパッドをタップします。</li>
+      </ol>
+      <div class="tip">スマホ全体の音量は、本体の音量ボタンで調整します。Webページからスマホの音量は読み書きできないため、マスターは100%のままにして、本体の音量で合わせるのがおすすめです。</div>
+    </div>
+    <div class="media">
+      <div class="phone"><img src="img/home.webp" width="780" height="1688" alt="ホーム画面。上のほうがミキサー" loading="lazy"></div>
+      <p class="cap">画面の上のほうが、ミキサーです。</p>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="sec vid" id="lock">
+    <div>
+      <span class="num">06</span>
+      <h2>音量・フェードのロック</h2>
+      <p class="lead">本番中に、うっかりスライダーに触れて音量が変わるのを防ぐ機能です。</p>
+      <ul>
+        <li>各スライダーの右にある<b>鍵のボタン</b>を押すと、そのスライダーが固定されます。もう一度押すと解除されます。</li>
+        <li><b>全ロック</b>ボタンで、4つとも一気にロックできます。もう一度押すと、全部解除します。</li>
+        <li><b>マスターをロックすると</b>、フェード時間以外のスライダー（音楽・効果音の音量）も触れなくなります。</li>
+      </ul>
+      <div class="tip">ロックしても、パッドは鳴らせます。「全停止」や「音 ON / OFF」も、いつもどおり使えます。</div>
+      <p>ロックの状態は、プロジェクトごとに保存されます。</p>
+    </div>
+    <div class="media">
+      <div class="phone vp"><video src="video/lock.mp4" poster="video/lock.webp" muted loop playsinline controls preload="metadata" aria-label="スライダーをロックする操作の動画"></video></div>
+      <p class="vnote">🔊 動画は最初は消音で再生されます。音を聞くには、動画右下のスピーカーを押してください。</p>
+      <p class="cap">マスターをロックすると、音量のスライダーが動かなくなります。</p>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="sec flip" id="pad">
+    <div>
+      <span class="num">07</span>
+      <h2>パッドごとの細かい設定</h2>
+      <p class="lead">パッドの設定の窓では、1つずつ音の鳴り方を調整できます。</p>
+      <table>
+        <tr><th>項目</th><th>はたらき</th></tr>
+        <tr><td>最大音量</td><td>このパッドの音量です。他の音より大きすぎるときに下げます。</td></tr>
+        <tr><td>バランス</td><td>左右の音の振り分けです。中央が標準です。</td></tr>
+        <tr><td>再生位置</td><td>音の途中から始めたいときの、開始位置（秒）です。</td></tr>
+        <tr><td>フェードイン</td><td>鳴らし始めに、音がだんだん大きくなる長さです。</td></tr>
+        <tr><td>フェードアウト</td><td>止めるときに、音がだんだん小さくなる長さです。</td></tr>
+        <tr><td>イコライザ</td><td>低域・中域・高域の3つで、音色を整えます（±の範囲で調整）。</td></tr>
+      </table>
+      <h3>窓の下のボタン</h3>
+      <table>
+        <tr><td>試聴</td><td>決定する前に、いまの設定で鳴らして確認します。</td></tr>
+        <tr><td>コピー／貼り付け</td><td>設定を別のパッドにコピーします。同じ設定を何個も作るときに便利です。</td></tr>
+        <tr><td>設定をリセット</td><td>音量やフェードなどを、初期設定に戻します。音と名前、色は残ります。</td></tr>
+        <tr><td>音声・リンクを外す</td><td>パッドを空にします。名前・色・各設定も初期の状態に戻ります。</td></tr>
+      </table>
+      <div class="tip">「編集」をオンにした瞬間に、鳴っている音は自動で止まります。設定中に音が鳴り続けることはありません。</div>
+    </div>
+    <div class="media">
+      <div class="phone"><img src="img/dialog-eq.webp" width="780" height="1688" alt="イコライザを開いた設定の窓" loading="lazy"></div>
+      <p class="cap">「イコライザ」を開くと、低域・中域・高域のスライダーが出ます。</p>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section class="sec" id="spotify">
+    <div>
+      <span class="num">08</span>
+      <h2>Spotifyのパッド</h2>
+      <p class="lead">SpotifyのURLを貼ると、曲・アルバム・プレイリストを開くパッドが作れます。</p>
+      <ol class="steps">
+        <li>Spotifyアプリで、曲やプレイリストの<b>「共有」→「リンクをコピー」</b>をします。</li>
+        <li>「編集」をオンにして、パッドをタップします。</li>
+        <li><b>Spotify</b>の欄に、コピーしたURLを貼り付けます。</li>
+        <li>名前と色を付けて、「決定」を押します。</li>
+      </ol>
+      <p>パッドの上に<b>SPOTIFY</b>という目印が付きます。タップすると、Spotifyのアプリ（またはWeb）が開きます。</p>
+      <div class="warn">Spotifyの音は、Spotify側で鳴ります。このアプリでフェード・イコライザ・ループなどをかけることはできません（Spotifyの仕組み上、できないためです）。</div>
+      <h3>アプリ版での違い</h3>
+      <ul>
+        <li><b>claude.ai版のアプリ</b>：画面の「Spotify」から曲を検索して、パッドに割り当てられます。</li>
+        <li><b>GitHub公開版</b>：検索はなく、URLを貼る方法を使います。メニューの「設定」で「ページ内のプレーヤーで開く」をオンにすると、画面の下に小さなプレーヤーが出て、ページから離れずに再生できます。</li>
+      </ul>
+    </div>
+    <div class="media">
+      <div class="cols">
+        <figure><div class="phone"><img src="img/dialog-spotify.webp" width="780" height="1688" alt="SpotifyのURLを入れた設定の窓" loading="lazy"></div><p class="cap">URLを貼る</p></figure>
+        <figure><div class="phone"><img src="img/spotify-pad.webp" width="780" height="1688" alt="SPOTIFYの目印が付いたパッド" loading="lazy"></div><p class="cap">目印が付く</p></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 -->
+  <section class="sec flip vid" id="project">
+    <div>
+      <span class="num">09</span>
+      <h2>プロジェクトの保存と管理</h2>
+      <p class="lead">パッドの内容を1つのまとまり（プロジェクト）として、いくつでも保存できます。ライブごと、イベントごとに分けておくと便利です。</p>
+      <p>変更は、そのつど<b>自動で保存</b>されます。保存ボタンを押し忘れても大丈夫です。</p>
+      <p>右上の<b>「メニュー」</b>から、次の操作ができます。</p>
+      <table>
+        <tr><th>メニュー</th><th>はたらき</th></tr>
+        <tr><td>新規作成</td><td>空のプロジェクトを作って、切り替えます。</td></tr>
+        <tr><td>開く</td><td>保存してあるプロジェクトの一覧から選んで、開きます。</td></tr>
+        <tr><td>上書き保存</td><td>いまの状態を、いますぐ保存します。</td></tr>
+        <tr><td>名前を付けて保存</td><td>音も含めて複製し、別の名前で保存します。</td></tr>
+        <tr><td>削除</td><td>選んだプロジェクトを削除します。元に戻せません。</td></tr>
+        <tr><td>ファイルに書き出す</td><td>プロジェクトを、音ごと1つのファイルにします。バックアップや、別の端末への引っ越しに使います。</td></tr>
+        <tr><td>ファイルから読み込む</td><td>書き出したファイルを、新しいプロジェクトとして開きます。</td></tr>
+      </table>
+      <div class="tip">データは、お使いのブラウザの中に保存されます。端末を変えるときや、ブラウザのデータを消すときは、先に「ファイルに書き出す」で保存してください。</div>
+    </div>
+    <div class="media">
+      <div class="phone vp"><video src="video/project.mp4" poster="video/project.webp" muted loop playsinline controls preload="metadata" aria-label="プロジェクトを保存して切り替える操作の動画"></video></div>
+      <p class="vnote">🔊 動画は最初は消音で再生されます。音を聞くには、動画右下のスピーカーを押してください。</p>
+      <p class="cap">名前を付けて保存 → 新規作成 → 開くで切り替え</p>
+    </div>
+  </section>
+
+  <section class="sec full">
+    <div>
+      <h3 style="margin-top:0">メニューの画面</h3>
+      <div class="cols">
+        <figure><div class="phone"><img src="img/menu.webp" width="780" height="1688" alt="メニューの一覧" loading="lazy"></div><p class="cap">メニュー</p></figure>
+        <figure><div class="phone"><img src="img/menu-open.webp" width="780" height="1688" alt="プロジェクトの一覧" loading="lazy"></div><p class="cap">開く</p></figure>
+        <figure><div class="phone"><img src="img/menu-saveas.webp" width="780" height="1688" alt="名前を付けて保存の画面" loading="lazy"></div><p class="cap">名前を付けて保存</p></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section class="sec" id="prefs">
+    <div>
+      <span class="num">10</span>
+      <h2>表示と設定、ロック</h2>
+      <h3>表示</h3>
+      <ul>
+        <li><b>キーの表示</b>：パッドにキーボードのキー名を出すかを選びます。「自動」は、キーボードのある環境でだけ出します。</li>
+        <li><b>進行バー</b>：パッドの下の、再生位置のバーを出すかを選びます。</li>
+        <li><b>パッドの高さ</b>：パッドの縦の大きさを「低・標準・高」から選びます。</li>
+      </ul>
+      <h3>設定</h3>
+      <ul>
+        <li><b>同時発音数</b>：同時に鳴らせる音の数です。古い端末で音が途切れるときは、数を減らします。</li>
+        <li><b>消音スイッチでも鳴らす</b>：iPhoneの消音スイッチがオンでも音が出るようにします。</li>
+        <li><b>画面をスリープさせない</b>：演奏中に画面が消えないようにします。</li>
+        <li><b>すべてのデータを消去</b>：全プロジェクトと音声を消します。元に戻せません。</li>
+      </ul>
+      <h3>管理者モード（編集のロック）</h3>
+      <p>4〜8桁のPINを決めて、ロックを有効にできます。ロック中は、編集・Spotify検索・新規作成・保存・削除ができません。演奏と音量の操作は、そのまま使えます。他の人にステージ操作を任せるときに便利です。</p>
+      <div class="warn">誤操作を防ぐための簡易ロックです。PINを忘れると、ブラウザのサイトデータを消すまで解除できません（プロジェクトも消えます）。忘れないよう、必ず控えておいてください。</div>
+    </div>
+    <div class="media">
+      <div class="cols">
+        <figure><div class="phone"><img src="img/menu-display.webp" width="780" height="1688" alt="表示の設定画面" loading="lazy"></div><p class="cap">表示</p></figure>
+        <figure><div class="phone"><img src="img/menu-settings.webp" width="780" height="1688" alt="設定画面" loading="lazy"></div><p class="cap">設定</p></figure>
+      </div>
+      <div class="cols" style="margin-top:26px"><figure><div class="phone"><img src="img/menu-admin.webp" width="780" height="1688" alt="管理者モードの画面" loading="lazy"></div><p class="cap">管理者モード</p></figure></div>
+    </div>
+  </section>
+
+  <!-- 11 -->
+  <section class="sec full" id="mobile">
+    <div>
+      <span class="num">11</span>
+      <h2>iPhone・オフラインで使うコツ</h2>
+      <ol class="steps">
+        <li><b>最初のタップで音が使えるようになります。</b>鳴らないときは、もう一度タップしてください。</li>
+        <li><b>消音スイッチ</b>がオンだと鳴らないことがあります。メニューの「設定」→「消音スイッチでも鳴らす」をオンにしてください。</li>
+        <li><b>ホーム画面に追加</b>すると、アプリのように全画面で使えます。iPhoneは、Safariの共有ボタンから「ホーム画面に追加」。Androidは、ブラウザのメニューから「アプリをインストール」または「ホーム画面に追加」です。</li>
+        <li><b>オフライン</b>：GitHub公開版は、一度開いておけば、電波がなくても開いて鳴らせます。</li>
+        <li><b>長い音声</b>は、メモリを多く使います。数分以内のファイルをおすすめします。</li>
+      </ol>
+      <div class="warn">iPhoneのSafariは、長い間そのページを開かないと、保存したデータを消すことがあります。大事なプロジェクトは、定期的に「ファイルに書き出す」でバックアップしてください。</div>
+    </div>
+  </section>
+
+  <!-- 12 -->
+  <section class="sec full" id="keys">
+    <div>
+      <span class="num">12</span>
+      <h2>キーボードで操作する</h2>
+      <p class="lead">パソコンでは、キーボードでもパッドを鳴らせます。表示中のバンクの12個のパッドが、キーに割り当てられています。</p>
+      <div class="tscroll"><table>
+        <tr><th>パッド</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th>12</th></tr>
+        <tr><td>音楽</td><td><kbd>1</kbd></td><td><kbd>2</kbd></td><td><kbd>3</kbd></td><td><kbd>4</kbd></td><td><kbd>Q</kbd></td><td><kbd>W</kbd></td><td><kbd>E</kbd></td><td><kbd>R</kbd></td><td><kbd>A</kbd></td><td><kbd>S</kbd></td><td><kbd>D</kbd></td><td><kbd>F</kbd></td></tr>
+        <tr><td>効果音</td><td><kbd>7</kbd></td><td><kbd>8</kbd></td><td><kbd>9</kbd></td><td><kbd>0</kbd></td><td><kbd>U</kbd></td><td><kbd>I</kbd></td><td><kbd>O</kbd></td><td><kbd>P</kbd></td><td><kbd>J</kbd></td><td><kbd>K</kbd></td><td><kbd>L</kbd></td><td><kbd>;</kbd></td></tr>
+      </table></div>
+      <p><kbd>Esc</kbd> キーで、すべての音を止めます。</p>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="sec full" id="faq">
+    <div>
+      <span class="num">13</span>
+      <h2>よくある質問</h2>
+      <details><summary>音が鳴りません</summary><p>最初に画面を1回タップして、もう一度パッドを押してください。それでも鳴らないときは、「音 OFF」になっていないか、マスターや音量のスライダーが0になっていないか、端末の音量が下がっていないかを確認してください。iPhoneは、消音スイッチと、設定の「消音スイッチでも鳴らす」も確認してください。</p></details>
+      <details><summary>ブラウザを閉じたら、パッドの中身は消えますか？</summary><p>消えません。自動で保存されていて、次に開いたときも残っています。ただし、プライベートブラウズの場合や、ブラウザのデータを消した場合は消えます。</p></details>
+      <details><summary>他のスマホやパソコンでも同じパッドを使いたい</summary><p>メニューの「ファイルに書き出す」でファイルを作り、別の端末で「ファイルから読み込む」を使ってください。音も一緒に移せます。</p></details>
+      <details><summary>どんな音声ファイルが使えますか？</summary><p>お使いのブラウザで再生できる音声ファイル（MP3、WAV、M4Aなど）が使えます。1ファイル25MBまでです。</p></details>
+      <details><summary>Spotifyの曲にフェードやループをかけられますか？</summary><p>できません。Spotifyの音は、Spotify側で再生されるため、このアプリでは加工できません。フェードやループが必要な曲は、お持ちの音声ファイルをパッドに入れてください。</p></details>
+      <details><summary>パッドを間違えて消してしまいました</summary><p>元に戻す機能はありません。大事なプロジェクトは、あらかじめ「名前を付けて保存」や「ファイルに書き出す」でバックアップしておくと安心です。</p></details>
+      <details><summary>本番中に操作ミスをしたくない</summary><p>「編集」をオフにしておくと、タップで鳴らすだけになります。さらに、スライダーの「全ロック」や、「管理者モード」で編集のロックを使うと、安心です。</p></details>
+    </div>
+  </section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><a class="appLink" href="https://claude.ai/artifact/2AewRccbhyU58P1rbtovsU">Play on Sound を開く</a>　／　<a href="#top">ページの先頭へ</a></p>
+    <p>Play on Sound 使い方ガイド</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  /* when this guide sits in a "guide/" folder next to the app (GitHub), link to ../ ; otherwise the app link above is used */
+  try {
+    if (/\/guide(\/|\/index\.html)?$/.test(location.pathname)) {
+      var links = document.querySelectorAll('.appLink');
+      for (var i = 0; i < links.length; i++) links[i].setAttribute('href', '../');
+    }
+  } catch (e) { /* ignore */ }
+
+  /* highlight the current section in the top bar */
+  var ids = ['start', 'assign', 'play', 'modes', 'mixer', 'lock', 'pad', 'spotify', 'project', 'prefs', 'mobile', 'keys', 'faq'];
+  var links = {};
+  ids.forEach(function (id) { links[id] = document.querySelector('#toc a[href="#' + id + '"]'); });
+  function setCur(id) {
+    ids.forEach(function (k) { if (links[k]) { if (k === id) links[k].setAttribute('aria-current', 'true'); else links[k].removeAttribute('aria-current'); } });
+    var a = links[id];
+    if (a && a.scrollIntoView) { var t = document.getElementById('toc'); try { t.scrollTo({ left: a.offsetLeft - 60, behavior: 'smooth' }); } catch (e) { /* ignore */ } }
+  }
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) setCur(e.target.id); });
+    }, { rootMargin: '-30% 0px -60% 0px' });
+    ids.forEach(function (id) { var el = document.getElementById(id); if (el) io.observe(el); });
+
+    /* play the demo videos only while they are on screen */
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduce) {
+      var vio = new IntersectionObserver(function (es) {
+        es.forEach(function (e) {
+          var v = e.target;
+          if (e.isIntersecting) { var p = v.play(); if (p && p.catch) p.catch(function () {}); } else { v.pause(); }
+        });
+      }, { threshold: 0.5 });
+      document.querySelectorAll('video').forEach(function (v) { vio.observe(v); });
+    }
+  }
+})();
+</script>
+</body>
+</html>
