@@ -1,6 +1,6 @@
 /* Play on Sound service worker: keeps the app usable offline.
    Change CACHE when you publish a new version so everyone gets the update. */
-var CACHE = 'play-on-sound-v1';
+var CACHE = 'play-on-sound-v3';
 var FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', function (e) {
@@ -23,7 +23,7 @@ self.addEventListener('fetch', function (e) {
   /* network first (so updates arrive when online), cache when offline */
   e.respondWith(
     fetch(req).then(function (res) {
-      if (res && (res.ok || res.type === 'opaque')) {
+      if (res && (res.status === 200 || res.type === 'opaque')) {
         var copy = res.clone();
         caches.open(CACHE).then(function (c) { c.put(req, copy); });
       }
