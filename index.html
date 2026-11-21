@@ -1,0 +1,2214 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101211">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Play on Sound">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>html,body{margin:0}</style></head><body>
+<title>Play on Sound</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: dark mixing console for live cue-ups. Portrait stacks header, mixer, Music, Sound Effects and Spotify. Landscape puts Music and Sound Effects side by side under a one-row mixer. Editing opens a dialog. */
+:root {
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  --bg: #101211;
+  --panel: #191c1a;
+  --panel-2: #222623;
+  --edge: #2e332f;
+  --ink: #e6e9e3;
+  --muted: #8f9992;
+  --pad: #292e2b;
+  --pad-empty: #151816;
+  --pad-ink: #e8ebe4;
+  --accent: #f2a007;
+  --accent-ink: #2a1c00;
+  --lcd: #1f2d1a;
+  --lcd-ink: #b9e08c;
+  --live: #ff5a4d;
+  --danger: #c8433a;
+  --focus: #7aa7ff;
+  --sp: #5dbb63;
+  --c1: #e8a21a; --c1i: #2a1c00;
+  --c2: #1f8f86; --c2i: #ffffff;
+  --c3: #c8433a; --c3i: #ffffff;
+  --c4: #4468cf; --c4i: #ffffff;
+  --c5: #3f7f2a; --c5i: #ffffff;
+  --display: "Chakra Petch", ui-sans-serif, system-ui, "Hiragino Sans", "Yu Gothic", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 14px;
+  line-height: 1.5;
+  padding-block: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+body.modal { overflow: hidden; }
+[hidden] { display: none !important; }
+button, input, output, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.device { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.secs { display: flex; flex-direction: column; gap: 12px; }
+
+.head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.brand { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.logo { flex: 0 0 auto; display: block; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5)); }
+.bt { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.sub { font-family: var(--mono); font-size: 11px; line-height: 1.2; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.head h1 { margin: 0; font-size: 20px; line-height: 1; font-weight: 600; white-space: nowrap; display: flex; flex-direction: column; gap: 4px; }
+.h1a { font-family: var(--mono); font-size: 0.55em; font-weight: 500; letter-spacing: 0.42em; color: var(--muted); }
+.h1b { font-size: 1.15em; letter-spacing: 0.22em; background: linear-gradient(100deg, #ffe0a0 0%, #f2a007 75%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
+.lcd {
+  order: 3;
+  flex: 1 1 100%;
+  min-width: 0;
+  background: var(--lcd);
+  color: var(--lcd-ink);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+.lcd div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tbtn {
+  background: var(--panel-2);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.tbtn:disabled { opacity: 0.4; cursor: default; }
+.tbtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+
+.panel { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 12px; }
+.empty-note { font-size: 13px; color: var(--muted); text-wrap: pretty; }
+.empty-note strong { color: var(--ink); font-weight: 600; }
+
+.mixer { display: flex; flex-direction: column; gap: 12px; }
+.mixgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
+.mix { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mix label { display: flex; justify-content: space-between; gap: 6px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.mix output { color: var(--ink); font-variant-numeric: tabular-nums; }
+.mixh { display: flex; align-items: center; gap: 6px; }
+.mixh label { flex: 1 1 auto; min-width: 0; }
+.lockb { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 30px; height: 24px; padding: 0; background: none; border: 1px solid var(--edge); border-radius: 6px; color: var(--muted); }
+.lockb:disabled { opacity: 0.4; cursor: default; }
+.lockb .sh { transform: translateY(-2px); }
+.lockb[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.lockb[aria-pressed="true"] .sh { transform: none; }
+input[type="range"]:disabled { opacity: 0.45; }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-height: 24px; }
+.mbtns { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn {
+  background: var(--panel-2);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+a.btn { display: inline-block; text-decoration: none; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.btn.danger { background: var(--danger); border-color: transparent; color: #fff; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+
+.sec { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.sechead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.sechead h2 { margin: 0; font-size: 13px; font-family: var(--mono); font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.sechead .btns { display: flex; gap: 6px; }
+.sechead .btn { padding: 4px 10px; font-size: 13px; }
+
+.tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; background: var(--bg); padding: 4px; border-radius: 10px; }
+.tab { position: relative; background: transparent; border: 0; border-radius: 7px; padding: 6px 0; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.tab[aria-pressed="true"] { background: var(--ink); color: var(--bg); font-weight: 500; }
+.tab.live::after { content: ""; position: absolute; top: 4px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--live); }
+
+.pads { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.slot { position: relative; min-width: 0; max-width: 100%; --ar: 0.8; --arm: 1; }
+.slot::before { content: ""; display: block; padding-top: calc(var(--ar) * var(--arm) * 100%); }
+body[data-pad="low"] .slot { --arm: 0.8; }
+body[data-pad="tall"] .slot { --arm: 1.25; }
+.pad {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--pad);
+  color: var(--pad-ink);
+  border: 0;
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.pad[data-c="1"] { background: var(--c1); color: var(--c1i); }
+.pad[data-c="2"] { background: var(--c2); color: var(--c2i); }
+.pad[data-c="3"] { background: var(--c3); color: var(--c3i); }
+.pad[data-c="4"] { background: var(--c4); color: var(--c4i); }
+.pad[data-c="5"] { background: var(--c5); color: var(--c5i); }
+.pad.empty { background: var(--pad-empty); color: var(--muted); box-shadow: inset 0 0 0 1px var(--edge); }
+.pad.playing { box-shadow: inset 0 0 0 3px #fff, inset 0 -3px 0 rgba(0, 0, 0, 0.35); }
+.plink { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 2; display: block; border-radius: 8px; }
+.plink[hidden] { display: none; }
+.editing .pad { outline: 1px dashed var(--muted); outline-offset: 2px; }
+.assigning .pad { outline: 2px dashed var(--accent); outline-offset: 2px; }
+.pt { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
+.pn { font-family: var(--mono); font-size: 11px; opacity: 0.75; }
+.pk { font-family: var(--mono); font-size: 10px; border: 1px solid currentColor; border-radius: 3px; padding: 0 3px; opacity: 0.7; line-height: 1.3; }
+.ps { font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em; border-radius: 3px; padding: 0 4px; background: rgba(0, 0, 0, 0.35); color: #fff; line-height: 1.4; }
+.ps[hidden] { display: none; }
+.ps:not([hidden]) ~ .pk { display: none; }
+.pname {
+  flex: 1 1 auto;
+  min-height: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.prog { position: absolute; left: 6px; right: 6px; bottom: 6px; height: 3px; border-radius: 2px; background: rgba(0, 0, 0, 0.3); overflow: hidden; }
+.prog i { display: block; height: 100%; width: 100%; background: rgba(255, 255, 255, 0.92); transform-origin: left; transform: scaleX(0); }
+.pad:not(.playing) .prog { visibility: hidden; }
+.pk { display: none; }
+.keys-on .pk { display: block; }
+.nobars .prog { display: none; }
+@media (hover: hover) {
+  .tbtn:hover { background: var(--edge); }
+  .btn:hover:not(:disabled) { background: var(--edge); }
+  .btn.danger:hover:not(:disabled) { background: var(--danger); filter: brightness(1.1); }
+  .btn.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
+  .tab:hover { background: var(--panel-2); color: var(--ink); }
+  .pad:hover { filter: brightness(1.1); }
+  .pad.empty:hover { filter: none; background: var(--panel); }
+  .mrow:hover:not(:disabled) { background: var(--edge); }
+}
+
+/* Spotify */
+.sform { display: flex; gap: 8px; }
+.sform input {
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--panel-2);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 16px;
+}
+.spnote { font-size: 12px; color: var(--muted); text-wrap: pretty; min-height: 1.4em; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.spnote:empty { display: none; }
+.splist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.splist:empty { display: none; }
+.spitem { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: space-between; background: var(--panel-2); border: 1px solid var(--edge); border-radius: 8px; padding: 8px 10px; }
+.spmeta { display: flex; flex-direction: column; min-width: 0; flex: 1 1 180px; }
+.sptype { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--sp); }
+.sptitle { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spsub { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spbtns { display: flex; flex-wrap: wrap; gap: 6px; }
+.spbtns .btn { padding: 4px 10px; font-size: 13px; }
+
+.sec[hidden] { display: none; }
+
+/* menu */
+.sheet { width: 100%; max-width: 480px; height: min(640px, 100%); display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; overflow: hidden; }
+.sheet:focus { outline: none; }
+.shead { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--edge); }
+.shead h2 { flex: 1 1 auto; margin: 0; text-align: center; font-family: var(--mono); font-weight: 500; font-size: 13px; letter-spacing: 0.14em; color: var(--muted); }
+.shead .btn { padding: 5px 12px; font-size: 13px; min-width: 66px; }
+.shead .btn.off { visibility: hidden; }
+.sbody { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 4px 12px 14px; }
+.mmsg { padding: 8px 14px; border-top: 1px solid var(--edge); background: var(--lcd); color: var(--lcd-ink); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+.mmsg:empty { display: none; }
+.mgrp { display: flex; flex-direction: column; background: var(--panel-2); border-radius: 10px; overflow: hidden; margin-top: 12px; }
+.mrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 48px; padding: 8px 14px; background: none; border: 0; border-top: 1px solid var(--edge); border-radius: 0; text-align: left; color: var(--ink); font-size: 15px; }
+.mrow:first-child { border-top: 0; }
+.mrow:disabled { opacity: 0.4; cursor: default; }
+.mrow .mt { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; overflow-wrap: anywhere; }
+.mrow small { color: var(--muted); font-size: 12px; line-height: 1.35; }
+.mrow .chev::after { content: "\203A"; font-size: 20px; color: var(--muted); }
+.mrow.col { flex-direction: column; align-items: stretch; gap: 4px; }
+.mrow .mtop { display: flex; justify-content: space-between; gap: 8px; }
+.mrow output { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.mrow.cur .mt span::before { content: "\25CF  "; color: var(--accent); }
+.pill { font-family: var(--mono); font-size: 12px; padding: 2px 10px; border-radius: 999px; background: var(--bg); color: var(--muted); border: 1px solid var(--edge); }
+.mrow[aria-checked="true"] .pill { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.seg { display: flex; gap: 4px; flex: 0 0 auto; }
+.sbtn { background: var(--bg); border: 1px solid var(--edge); border-radius: 8px; padding: 5px 10px; font-size: 13px; }
+.sbtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.mnote { margin: 8px 2px 0; font-size: 12px; color: var(--muted); text-wrap: pretty; }
+.mtext { margin: 10px 2px 0; font-size: 14px; line-height: 1.6; text-wrap: pretty; }
+.mh { margin: 16px 2px 0; font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; color: var(--muted); }
+.mlist { margin: 6px 0 0; padding-left: 20px; font-size: 14px; line-height: 1.6; }
+.mlist kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--edge); border-radius: 3px; padding: 0 4px; }
+.minput { display: block; width: 100%; background: var(--bg); border: 1px solid var(--edge); border-radius: 8px; padding: 10px 12px; font-size: 16px; margin-top: 10px; }
+.pin { -webkit-text-security: disc; text-security: disc; letter-spacing: 0.3em; }
+.mact { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.mact .btn { padding: 9px 16px; }
+
+/* edit dialog */
+.overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-block: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
+}
+.overlay[hidden] { display: none; }
+.dialog {
+  width: 100%;
+  max-width: 480px;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dialog:focus { outline: none; }
+.dialog h2 { margin: 0; font-family: var(--mono); font-weight: 500; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.dcols { display: flex; flex-direction: column; gap: 10px; }
+.dcol { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.frow { display: grid; grid-template-columns: 98px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.frow .fl { font-size: 13px; }
+.frow output { font-family: var(--mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 52px; text-align: right; }
+.frow .wide { grid-column: 2 / -1; min-width: 0; }
+.fbtn, .dialog input[type="text"], .dialog select {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 16px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.check input { accent-color: var(--accent); width: 18px; height: 18px; margin: 0; }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.sw { width: 30px; height: 30px; border-radius: 50%; border: 3px solid transparent; padding: 0; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25); }
+.sw[aria-pressed="true"] { border-color: var(--ink); }
+.dialog details { border-top: 1px solid var(--edge); padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.dialog summary { cursor: pointer; font-size: 13px; padding: 2px 0; }
+.dialog details[open] summary { margin-bottom: 6px; }
+.drow { display: flex; flex-wrap: wrap; gap: 8px; }
+.drow .btn { padding: 5px 12px; font-size: 13px; }
+.dfoot { display: flex; justify-content: flex-end; gap: 8px; padding-top: 10px; border-top: 1px solid var(--edge); position: sticky; bottom: -14px; background: var(--panel); margin-bottom: -14px; padding-bottom: 14px; }
+.dnote { font-family: var(--mono); font-size: 12px; color: var(--muted); min-height: 1.4em; overflow-wrap: anywhere; }
+
+@media (max-width: 360px) {
+  .logo { width: 38px; height: 38px; }
+  .brand { gap: 8px; }
+  .h1b { letter-spacing: 0.1em; }
+  .h1a { letter-spacing: 0.28em; }
+  .head .tbtn { padding: 6px 9px; }
+}
+@media (max-width: 400px) {
+  .head h1 { font-size: 17px; }
+  .frow { grid-template-columns: 94px minmax(0, 1fr) auto; }
+}
+
+/* Layout follows the size of the space, not the device orientation, so it also holds in a narrow pane or after rotating. */
+@media (min-width: 520px) {
+  .mixgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 640px) {
+  .head { flex-wrap: nowrap; }
+  .brand { flex: 0 0 auto; }
+  .lcd { order: 0; flex: 1 1 0; }
+  .dialog { max-width: 780px; }
+  .dcols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px; align-items: start; }
+}
+/* wide: Music and Sound Effects side by side, mixer in one row */
+@media (min-width: 720px) {
+  .device { max-width: 1120px; }
+  .secs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .mixer { flex-direction: row; align-items: center; gap: 16px; }
+  .mixgrid { flex: 1 1 auto; }
+  .mbtns { flex: 0 1 auto; justify-content: flex-end; }
+  .slot { --ar: 0.6667; }
+}
+/* short: pads in 6 columns x 2 rows and tighter spacing so the console fits one screen */
+@media (max-height: 520px) {
+  body { padding-block: 8px; }
+  .device, .secs { gap: 8px; }
+  .panel { padding: 8px; }
+  .sec { gap: 6px; }
+  .head h1 { font-size: 17px; }
+  .mix label { font-size: 10px; }
+  input[type="range"] { min-height: 20px; }
+  .btn { padding: 5px 10px; }
+  .pads { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .slot { --ar: 0.8; }
+  .pad { padding: 4px; gap: 1px; }
+  .pn, .pk { font-size: 9px; }
+  .pname { font-size: 10.5px; line-height: 1.2; -webkit-line-clamp: 2; }
+  .empty-note { font-size: 12px; padding: 6px 10px; }
+  .prog { left: 4px; right: 4px; bottom: 4px; }
+  .tab { padding: 4px 0; font-size: 11px; }
+  .dialog { padding: 10px; gap: 6px; }
+  .dcols, .dcol { gap: 6px; }
+  .dfoot { bottom: -10px; margin-bottom: -10px; padding-bottom: 10px; padding-top: 6px; }
+  .sw { width: 26px; height: 26px; }
+}
+</style>
+
+<main class="device">
+  <header class="head">
+    <div class="brand"><svg class="logo" viewBox="0 0 48 48" width="46" height="46" role="img" aria-label="Play on Sound">
+      <defs>
+        <linearGradient id="lgT" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2c322e"/><stop offset="1" stop-color="#111412"/></linearGradient>
+        <linearGradient id="lgA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd37a"/><stop offset="1" stop-color="#f2a007"/></linearGradient>
+        <radialGradient id="lgG" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#f2a007" stop-opacity="0.5"/><stop offset="1" stop-color="#f2a007" stop-opacity="0"/></radialGradient>
+      </defs>
+      <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#lgT)" stroke="#3a403c" stroke-width="1.5"/>
+      <circle cx="19" cy="24" r="17" fill="url(#lgG)"/>
+      <path d="M12 14.5v19a1.5 1.5 0 0 0 2.3 1.3l15-9.5a1.5 1.5 0 0 0 0-2.6l-15-9.5A1.5 1.5 0 0 0 12 14.5z" fill="url(#lgA)"/>
+      <path d="M33.5 18a9 9 0 0 1 0 12" fill="none" stroke="#f2a007" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M38 12.5a16 16 0 0 1 0 23" fill="none" stroke="#f2a007" stroke-opacity="0.5" stroke-width="2.6" stroke-linecap="round"/>
+    </svg><div class="bt"><h1 aria-label="Play on Sound"><span class="h1a" aria-hidden="true">PLAY ON</span><span class="h1b" aria-hidden="true">SOUND</span></h1><div class="sub" id="projName"></div></div></div>
+    <div class="lcd" role="status">
+      <div id="lcd1"></div>
+      <div id="lcd2" aria-live="polite"></div>
+    </div>
+    <button type="button" class="tbtn" id="editBtn" aria-pressed="false">編集</button>
+    <button type="button" class="tbtn" id="menuBtn" aria-haspopup="dialog">メニュー</button>
+  </header>
+
+  <section class="panel empty-note" id="empty" hidden>
+    <strong>パッドはまだ空です。</strong>
+    「編集」をオンにしてパッドをタップすると、音声ファイルを読み込めます。音声ファイルはパッドへのドラッグ＆ドロップでも読み込めます。下の Spotify から、曲やプレイリストを開くパッドも作れます。
+  </section>
+
+  <section class="panel mixer" aria-label="ミキサー">
+    <div class="mixgrid" id="mixgrid"></div>
+    <div class="mbtns">
+      <button type="button" class="btn" id="soundBtn" aria-pressed="true">音 ON</button>
+      <button type="button" class="btn danger" id="stopAll">全停止</button>
+      <button type="button" class="btn" id="fadeAll">フェード停止</button>
+      <button type="button" class="btn" id="lockAll" aria-pressed="false">全ロック</button>
+    </div>
+  </section>
+
+  <div id="secs" class="secs"></div>
+
+  <section class="panel sec" id="spot" aria-label="Spotify">
+    <div class="sechead"><h2>Spotify</h2></div>
+    <form class="sform" id="spForm">
+      <input id="spQ" type="text" placeholder="曲名・アーティスト名、または Spotify のリンク" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="Spotify を検索">
+      <button type="submit" class="btn primary" id="spGo">検索</button>
+    </form>
+    <div class="spnote" id="spNote"></div>
+    <ul class="splist" id="spList"></ul>
+    <div class="spnote" id="spHelp">Spotify のパッドをタップすると、Spotify（アプリまたはWeb）で曲やプレイリストが開きます。音はこのページでは鳴りません。</div>
+  </section>
+
+</main>
+
+<div class="overlay" id="dlg" hidden>
+  <div class="dialog" id="dialog" role="dialog" aria-modal="true" aria-labelledby="dTitle" tabindex="-1">
+    <h2 id="dTitle"></h2>
+    <div class="dcols">
+      <div class="dcol">
+        <div class="frow"><span class="fl">ファイル</span><button type="button" class="fbtn wide" id="dFile">ファイルを選択</button></div>
+        <div class="frow"><label class="fl" for="dName">表示名</label><input id="dName" class="wide" type="text" maxlength="24" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+        <div class="frow"><label class="fl" for="dSpot">Spotify</label><input id="dSpot" class="wide" type="text" placeholder="https://open.spotify.com/…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+        <div class="frow">
+          <label class="fl" for="dMode">再生方法</label>
+          <select id="dMode" class="wide">
+            <option value="free">無制限（重ね再生）</option>
+            <option value="drum">ドラム（押すたび頭出し）</option>
+            <option value="toggle">トグル（押して再生／停止）</option>
+            <option value="hold">押している間だけ</option>
+          </select>
+        </div>
+        <div class="frow"><span class="fl">ループ</span><label class="check wide"><input type="checkbox" id="dLoop"> 繰り返し再生する</label></div>
+        <div class="frow"><span class="fl" id="dColorL">色</span><div class="swatches wide" id="swatches" role="group" aria-labelledby="dColorL"></div></div>
+      </div>
+      <div class="dcol">
+        <div id="dSliders" style="display:flex;flex-direction:column;gap:6px"></div>
+        <details>
+          <summary>イコライザ</summary>
+          <div id="dEq" style="display:flex;flex-direction:column;gap:6px"></div>
+        </details>
+        <div class="drow">
+          <button type="button" class="btn" id="dPrev">試聴</button>
+          <button type="button" class="btn" id="dCopy">コピー</button>
+          <button type="button" class="btn" id="dPaste">貼り付け</button>
+          <button type="button" class="btn" id="dReset">設定をリセット</button>
+          <button type="button" class="btn" id="dDel">音声・リンクを外す</button>
+        </div>
+      </div>
+    </div>
+    <div class="dnote" id="dNote"></div>
+    <input id="dFileIn" type="file" accept="audio/*" hidden>
+    <div class="dfoot">
+      <button type="button" class="btn" id="dCancel">キャンセル</button>
+      <button type="button" class="btn primary" id="dOk">決定</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="menu" hidden>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle" tabindex="-1">
+    <div class="shead">
+      <button type="button" class="btn" id="mBack">戻る</button>
+      <h2 id="mTitle">メニュー</h2>
+      <button type="button" class="btn" id="mClose">閉じる</button>
+    </div>
+    <div class="sbody" id="mBody"></div>
+    <div class="mmsg" id="mMsg" role="status" aria-live="polite"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var SECS = ['音楽', '効果音'];
+  var SEC_EN = ['MUSIC', 'SOUND EFFECTS'];
+  var NB = 5, PER = 12;
+  var KEYS = [
+    ['1', '2', '3', '4', 'Q', 'W', 'E', 'R', 'A', 'S', 'D', 'F'],
+    ['7', '8', '9', '0', 'U', 'I', 'O', 'P', 'J', 'K', 'L', ';']
+  ];
+  var CODES = [
+    ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyA', 'KeyS', 'KeyD', 'KeyF'],
+    ['Digit7', 'Digit8', 'Digit9', 'Digit0', 'KeyU', 'KeyI', 'KeyO', 'KeyP', 'KeyJ', 'KeyK', 'KeyL', 'Semicolon']
+  ];
+  var COLORS = ['グレー', '琥珀', '青緑', '赤', '青', '緑'];
+  var MODES = ['free', 'drum', 'toggle', 'hold'];
+  var MODE_SHORT = { free: '重ね再生', drum: 'ドラム', toggle: 'トグル', hold: '押下中のみ' };
+  var SPOT_TYPES = { track: '曲', album: 'アルバム', artist: 'アーティスト', playlist: 'プレイリスト', show: '番組', episode: 'エピソード' };
+  var LS = 'pad-eight-project-v3';
+  var LSI = 'pad-eight-index-v1', LSP = 'pad-eight-prefs-v1';
+  var IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var FIELDS = ['name', 'color', 'file', 'hasAudio', 'raw', 'buffer', 'mode', 'loop', 'vol', 'pan', 'start', 'fadeIn', 'fadeOut'];
+
+  function $(id) { return document.getElementById(id); }
+  function clamp(x, a, b) { return Math.min(b, Math.max(a, x)); }
+  function num(x, a, b, d) { x = Number(x); return isFinite(x) ? clamp(x, a, b) : d; }
+
+  /* ---------- Spotify links ---------- */
+  function parseSpotify(text) {
+    text = String(text || '').trim();
+    var m = text.match(/^spotify:(track|album|artist|playlist|show|episode):([A-Za-z0-9]{10,32})$/);
+    if (m) return { type: m[1], id: m[2], uri: 'spotify:' + m[1] + ':' + m[2] };
+    var u;
+    try { u = new URL(text); } catch (e) { return null; }
+    if (u.protocol !== 'https:' || u.hostname !== 'open.spotify.com') return null;
+    var seg = u.pathname.split('/').filter(Boolean);
+    if (seg.length && /^intl-/.test(seg[0])) seg.shift();
+    if (seg.length < 2) return null;
+    if (!SPOT_TYPES[seg[0]] || !/^[A-Za-z0-9]{10,32}$/.test(seg[1])) return null;
+    return { type: seg[0], id: seg[1], uri: 'spotify:' + seg[0] + ':' + seg[1] };
+  }
+  function spotUrl(uri) {
+    var p = parseSpotify(uri);
+    return p ? 'https://open.spotify.com/' + p.type + '/' + p.id : '';
+  }
+  function spotType(uri) {
+    var p = parseSpotify(uri);
+    return p ? SPOT_TYPES[p.type] : '';
+  }
+
+  /* ---------- Project model ---------- */
+  function newButton(sec, bk, idx) {
+    return {
+      sec: sec, bk: bk, idx: idx, isDraft: false,
+      name: '', color: 5, file: '', hasAudio: false, spot: null,
+      raw: null, buffer: null, _dec: null, _bad: false, _held: false,
+      mode: sec === 0 ? 'toggle' : 'free', loop: false,
+      vol: 1, pan: 0, start: 0, fadeIn: 0, fadeOut: 0, eq: [0, 0, 0]
+    };
+  }
+  /* the default pad settings; full = also name and colour (used when a sound or link is removed) */
+  function setDefaults(b, full) {
+    b.mode = b.sec === 0 ? 'toggle' : 'free';
+    b.loop = false; b.vol = 1; b.pan = 0; b.start = 0; b.fadeIn = 0; b.fadeOut = 0; b.eq = [0, 0, 0];
+    if (full) { b.color = 5; b.name = ''; }
+  }
+  function emptyProject() {
+    var banks = [];
+    for (var s = 0; s < 2; s++) {
+      var bks = [];
+      for (var k = 0; k < NB; k++) {
+        var row = [];
+        for (var i = 0; i < PER; i++) row.push(newButton(s, k, i));
+        bks.push(row);
+      }
+      banks.push(bks);
+    }
+    return { banks: banks, page: [0, 0], xf: false, fade: 0, master: 1, vols: [1, 1], on: true, locks: [false, false, false, false] };
+  }
+
+  function ser(b) {
+    return { n: b.name, c: b.color, f: b.file, a: b.hasAudio ? 1 : 0, m: b.mode, l: b.loop ? 1 : 0,
+      v: b.vol, p: b.pan, s: b.start, fi: b.fadeIn, fo: b.fadeOut, e: b.eq,
+      sp: b.spot ? { u: b.spot.uri, t: b.spot.title, s: b.spot.sub } : null };
+  }
+  function fill(b, o) {
+    if (o.d) return; /* a built-in demo pad from an earlier version: leave it empty */
+    if (!o.n && !o.a && !o.sp) return; /* blank pad: keep the defaults */
+    b.name = String(o.n || '').slice(0, 24);
+    b.color = clamp(o.c | 0, 0, 5);
+    b.file = String(o.f || '').slice(0, 80);
+    b.hasAudio = !!o.a;
+    b.mode = MODES.indexOf(o.m) >= 0 ? o.m : b.mode;
+    b.loop = !!o.l;
+    b.vol = num(o.v, 0, 1, 1);
+    b.pan = num(o.p, -1, 1, 0);
+    b.start = num(o.s, 0, 3600, 0);
+    b.fadeIn = num(o.fi, 0, 8, 0);
+    b.fadeOut = num(o.fo, 0, 8, 0);
+    if (Array.isArray(o.e)) b.eq = [0, 1, 2].map(function (k) { return num(o.e[k], -12, 12, 0); });
+    var sp = o.sp && parseSpotify(o.sp.u);
+    b.spot = sp ? { uri: sp.uri, title: String(o.sp.t || '').slice(0, 80), sub: String(o.sp.s || '').slice(0, 80) } : null;
+    if (b.spot) b.hasAudio = false;
+  }
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+  function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
+  function pkey(id) { return id === 'main' ? LS : 'pad-eight-proj-' + id; }
+  function newId() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function loadIndex() {
+    var j = null;
+    try { j = JSON.parse(lsGet(LSI)); } catch (e) { j = null; }
+    var list = [];
+    if (j && Array.isArray(j.list)) {
+      j.list.forEach(function (x) {
+        if (x && typeof x.id === 'string' && /^[A-Za-z0-9]{1,24}$/.test(x.id)) list.push({ id: x.id, name: String(x.name || '').slice(0, 30) || '無題' });
+      });
+    }
+    if (!list.length) list = [{ id: 'main', name: 'プロジェクト1' }];
+    var cur = list[0].id;
+    if (j) list.forEach(function (x) { if (x.id === j.cur) cur = x.id; });
+    return { cur: cur, list: list };
+  }
+  function loadPrefs() {
+    var o = null;
+    try { o = JSON.parse(lsGet(LSP)); } catch (e) { o = null; }
+    o = o || {};
+    var a = o.adm || {};
+    return {
+      keys: o.keys === true || o.keys === false ? o.keys : null,
+      bars: o.bars !== false,
+      pad: ['low', 'normal', 'tall'].indexOf(o.pad) >= 0 ? o.pad : 'normal',
+      wake: !!o.wake,
+      ios: o.ios !== false,
+      maxv: num(o.maxv, 4, 32, 20) | 0,
+      adm: { on: !!(a.on && a.hash), salt: String(a.salt || ''), hash: String(a.hash || '') }
+    };
+  }
+  var PF = loadPrefs();
+  function savePrefs() { lsSet(LSP, JSON.stringify(PF)); }
+
+  function loadProject(id) {
+    try {
+      var j = JSON.parse(lsGet(pkey(id)));
+      if (!j || !Array.isArray(j.banks) || j.banks.length !== 2) return null;
+      var Q = emptyProject();
+      Q.id = id;
+      Q.page = [clamp((j.page && j.page[0]) | 0, 0, NB - 1), clamp((j.page && j.page[1]) | 0, 0, NB - 1)];
+      Q.xf = j.xf === true;
+      Q.fade = num(j.fade, 0, 8, 0);
+      Q.master = j.mv === 2 ? num(j.master, 0, 1, 1) : 1;
+      Q.on = j.on !== false;
+      if (Array.isArray(j.lk)) Q.locks = [0, 1, 2, 3].map(function (k) { return j.lk[k] === true; });
+      if (Array.isArray(j.vols)) Q.vols = [num(j.vols[0], 0, 1, 1), num(j.vols[1], 0, 1, 1)];
+      for (var s = 0; s < 2; s++) {
+        for (var k = 0; k < NB; k++) {
+          for (var i = 0; i < PER; i++) {
+            var o = j.banks[s] && j.banks[s][k] && j.banks[s][k][i];
+            if (o) fill(Q.banks[s][k][i], o);
+          }
+        }
+      }
+      return Q;
+    } catch (e) { return null; }
+  }
+  function serProject(p) {
+    return {
+      mv: 2, lk: p.locks, page: p.page, xf: p.xf, fade: p.fade, master: p.master, vols: p.vols, on: p.on,
+      banks: p.banks.map(function (sec) { return sec.map(function (bk) { return bk.map(ser); }); })
+    };
+  }
+  var saveT = null;
+  function saveIndex() { return lsSet(LSI, JSON.stringify(IDX)); }
+  function saveNow() {
+    clearTimeout(saveT);
+    if (!IDX.list.some(function (x) { return x.id === S.id; })) return false;
+    var ok = lsSet(pkey(S.id), JSON.stringify(serProject(S)));
+    return saveIndex() && ok;
+  }
+  function save() { clearTimeout(saveT); saveT = setTimeout(saveNow, 250); }
+
+  /* ---------- Stored audio (IndexedDB) ---------- */
+  var dbp = null;
+  function openDB() {
+    if (dbp) return dbp;
+    dbp = new Promise(function (res, rej) {
+      try {
+        var r = indexedDB.open('pad-eight-3', 1);
+        r.onupgradeneeded = function () { r.result.createObjectStore('audio'); };
+        r.onsuccess = function () { res(r.result); };
+        r.onerror = function () { rej(r.error); };
+      } catch (e) { rej(e); }
+    });
+    return dbp;
+  }
+  function idb(mode, fn) {
+    return openDB().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction('audio', mode);
+        var req = fn(tx.objectStore('audio'));
+        tx.oncomplete = function () { res(req ? req.result : undefined); };
+        tx.onerror = function () { rej(tx.error); };
+        tx.onabort = function () { rej(tx.error); };
+      });
+    });
+  }
+  function baseKey(b) { return b.sec + '-' + b.bk + '-' + b.idx; }
+  function keyFor(id, k) { return id === 'main' ? k : id + '/' + k; }
+  function bkey(b) { return keyFor(S.id, baseKey(b)); }
+  function idbDelProject(id) {
+    var range = id === 'main' ? IDBKeyRange.bound('0', '2', false, true) : IDBKeyRange.bound(id + '/', id + '/\uffff');
+    return idb('readwrite', function (st) { return st.delete(range); });
+  }
+  function idbPut(k, v) { return idb('readwrite', function (s) { return s.put(v, k); }); }
+  function idbGet(k) { return idb('readonly', function (s) { return s.get(k); }); }
+  function idbDel(k) { return idb('readwrite', function (s) { return s.delete(k); }); }
+  function idbClear() { return idb('readwrite', function (s) { return s.clear(); }); }
+
+  /* ---------- Audio engine ---------- */
+  var ctx = null, master = null, secGain = [];
+  var voices = [];
+  var heldBy = {};
+
+  function applyGain() {
+    if (!ctx) return;
+    master.gain.value = S.on ? S.master : 0;
+    secGain[0].gain.value = S.vols[0];
+    secGain[1].gain.value = S.vols[1];
+  }
+  function ensure() {
+    if (!ctx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      ctx = new AC();
+      master = ctx.createGain();
+      var comp = ctx.createDynamicsCompressor();
+      master.connect(comp);
+      comp.connect(ctx.destination);
+      secGain = [ctx.createGain(), ctx.createGain()];
+      secGain[0].connect(master);
+      secGain[1].connect(master);
+      applyGain();
+    }
+    if (ctx.state !== 'running') {
+      try { var rp = ctx.resume(); if (rp && rp.catch) rp.catch(function () {}); } catch (e) { /* ignore */ }
+    }
+    return ctx;
+  }
+  /* iOS: the audio context only starts after a touchend/click, so unlock it there with a silent buffer. */
+  function unlock() {
+    var c = ensure();
+    try {
+      var sb = c.createBuffer(1, 1, 22050), ss = c.createBufferSource();
+      ss.buffer = sb; ss.connect(c.destination); ss.start(0);
+    } catch (e) { /* ignore */ }
+  }
+  ['touchend', 'pointerup', 'click', 'keydown'].forEach(function (ev) {
+    window.addEventListener(ev, function () { if (!(ctx && ctx.state === 'running')) unlock(); }, true);
+  });
+  function decode(ab) {
+    return new Promise(function (res, rej) {
+      var p;
+      try { p = ctx.decodeAudioData(ab, res, rej); } catch (e) { rej(e); return; }
+      if (p && typeof p.then === 'function') p.then(res, rej);
+    });
+  }
+  function readBuf(file) {
+    if (file.arrayBuffer) return file.arrayBuffer();
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+      r.readAsArrayBuffer(file);
+    });
+  }
+  /* keep decoded audio within a memory budget (iOS tabs get killed when they use too much) */
+  function bufBytes(buf) { return buf.length * buf.numberOfChannels * 4; }
+  function trim(keep) {
+    var list = [], total = 0;
+    eachBtn(function (b) { if (b.buffer) { total += bufBytes(b.buffer); list.push(b); } });
+    var budget = IS_IOS ? 150e6 : 500e6;
+    if (total <= budget) return;
+    list.sort(function (x, y) { return (x._used || 0) - (y._used || 0); });
+    for (var i = 0; i < list.length && total > budget; i++) {
+      var b = list[i];
+      if (b === keep || !b.raw) continue;
+      if (voices.some(function (v) { return v.b === b; })) continue;
+      total -= bufBytes(b.buffer);
+      b.buffer = null; b._dec = null;
+    }
+  }
+  function applyAudioSession() {
+    try { if (navigator.audioSession) navigator.audioSession.type = PF.ios ? 'playback' : 'auto'; } catch (e) { /* ignore */ }
+  }
+  var wl = null;
+  function applyWake() {
+    try {
+      if (PF.wake && navigator.wakeLock && !wl && document.visibilityState === 'visible') {
+        navigator.wakeLock.request('screen').then(function (l) {
+          wl = l;
+          l.addEventListener('release', function () { if (wl === l) wl = null; });
+        }).catch(function () {});
+      } else if (!PF.wake && wl) {
+        wl.release().catch(function () {});
+        wl = null;
+      }
+    } catch (e) { /* ignore */ }
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') {
+      applyWake();
+      if (ctx && ctx.state !== 'running') { try { ctx.resume(); } catch (e) { /* ignore */ } }
+    }
+  });
+
+  function hasSound(b) { return !!(b.raw || b.buffer); }
+
+  function needBuffer(b) {
+    if (b.buffer) return Promise.resolve(b.buffer);
+    if (b._bad) return Promise.resolve(null);
+    if (b.raw) {
+      if (!b._dec) {
+        b._dec = decode(b.raw.slice(0)).then(function (buf) {
+          b.buffer = buf;
+          b._used = Date.now();
+          trim(b);
+          return buf;
+        }).catch(function () {
+          b._bad = true;
+          return null;
+        });
+      }
+      return b._dec;
+    }
+    return Promise.resolve(null);
+  }
+
+  function startVoice(b, fadeInOverride) {
+    var c = ctx;
+    var active = voices.filter(function (v) { return !v.stopping; });
+    while (active.length >= PF.maxv) { stopVoice(active.shift(), 0.03); }
+    var t = c.currentTime + 0.005;
+    var buf = b.buffer;
+    var dur = buf.duration;
+    var start = Math.min(b.start, Math.max(0, dur - 0.05));
+    var len = dur - start;
+
+    var src = c.createBufferSource();
+    src.buffer = buf;
+    var lo = c.createBiquadFilter(); lo.type = 'lowshelf'; lo.frequency.value = 200; lo.gain.value = b.eq[0];
+    var mi = c.createBiquadFilter(); mi.type = 'peaking'; mi.frequency.value = 1000; mi.Q.value = 0.8; mi.gain.value = b.eq[1];
+    var hi = c.createBiquadFilter(); hi.type = 'highshelf'; hi.frequency.value = 4000; hi.gain.value = b.eq[2];
+    var env = c.createGain();
+    src.connect(lo); lo.connect(mi); mi.connect(hi);
+    if (c.createStereoPanner) {
+      var pn = c.createStereoPanner();
+      pn.pan.value = b.pan;
+      hi.connect(pn); pn.connect(env);
+    } else {
+      hi.connect(env);
+    }
+    env.connect(secGain[b.sec]);
+
+    var fin = fadeInOverride != null ? Math.max(b.fadeIn, fadeInOverride) : b.fadeIn;
+    if (fin > 0.01) {
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.linearRampToValueAtTime(Math.max(b.vol, 0.0001), t + fin);
+    } else {
+      env.gain.setValueAtTime(b.vol, t);
+    }
+    if (b.loop) {
+      src.loop = true;
+      src.loopStart = start;
+      src.loopEnd = dur;
+    } else if (b.fadeOut > 0.01 && len > fin + b.fadeOut) {
+      env.gain.setValueAtTime(b.vol, t + len - b.fadeOut);
+      env.gain.linearRampToValueAtTime(0.0001, t + len);
+    }
+    src.start(t, start);
+
+    var v = { b: b, src: src, env: env, t0: t, start: start, len: len, loop: b.loop, stopping: false };
+    src.onended = function () {
+      var k = voices.indexOf(v);
+      if (k >= 0) voices.splice(k, 1);
+      try { env.disconnect(); } catch (e) { /* already disconnected */ }
+      kick();
+    };
+    voices.push(v);
+    kick();
+  }
+
+  function stopVoice(v, fade) {
+    if (v.stopping) return;
+    v.stopping = true;
+    var t = ctx.currentTime;
+    var f = Math.max(fade, 0.03);
+    try {
+      var g = v.env.gain;
+      var cur0 = g.value;
+      g.cancelScheduledValues(t);
+      g.setValueAtTime(cur0, t);
+      g.linearRampToValueAtTime(0.0001, t + f);
+      v.src.stop(t + f + 0.02);
+    } catch (e) { /* voice already ended */ }
+    kick();
+  }
+
+  function stopButton(b, fade) {
+    voices.filter(function (v) { return v.b === b && !v.stopping; }).forEach(function (v) { stopVoice(v, fade); });
+  }
+  function stopSec(sec, fade) {
+    if (!ctx) return;
+    voices.filter(function (v) { return v.b.sec === sec && !v.b.isDraft; }).forEach(function (v) { stopVoice(v, fade); });
+  }
+  function stopAll(fade) {
+    if (!ctx) return;
+    voices.slice().forEach(function (v) { stopVoice(v, fade); });
+  }
+
+  function press(sec, i, key) {
+    var b = cur(sec, i);
+    last = { sec: sec, i: i };
+    updateLcd();
+    if (b.spot) {
+      var lk = slotLinks[sec][i];
+      if (!lk.hidden) lk.click();
+      return;
+    }
+    if (!hasSound(b)) return;
+    b._used = Date.now();
+    ensure();
+    var playing = voices.filter(function (v) { return v.b === b && !v.stopping; });
+    if (b.mode === 'toggle' && playing.length) {
+      playing.forEach(function (v) { stopVoice(v, b.fadeOut); });
+      return;
+    }
+    if (b.mode === 'drum') playing.forEach(function (v) { stopVoice(v, 0.03); });
+    if (b.mode === 'hold') { heldBy[key] = b; b._held = true; }
+    needBuffer(b).then(function (buf) {
+      if (!buf) { setMsg('この音声は再生できません'); return; }
+      if (b.mode === 'hold' && !b._held) return;
+      var fadeIn = null;
+      if (sec === 0 && S.xf) {
+        var others = voices.filter(function (v) { return v.b.sec === 0 && !v.b.isDraft && !v.stopping && v.b !== b; });
+        if (others.length) {
+          others.forEach(function (v) { stopVoice(v, S.fade); });
+          fadeIn = S.fade;
+        }
+      }
+      startVoice(b, fadeIn);
+    });
+  }
+
+  function release(key) {
+    var b = heldBy[key];
+    if (!b) return;
+    delete heldBy[key];
+    b._held = false;
+    stopButton(b, Math.max(b.fadeOut, 0.05));
+  }
+
+  /* ---------- State ---------- */
+  var IDX = loadIndex();
+  var S = loadProject(IDX.cur) || emptyProject();
+  S.id = IDX.cur;
+  var last = { sec: 0, i: 0 };
+  var editMode = false;
+  var assigning = null;
+  var clip = null;
+  var msgT = null;
+
+  function cur(sec, i) { return S.banks[sec][S.page[sec]][i]; }
+  function eachBtn(fn) {
+    S.banks.forEach(function (sec) { sec.forEach(function (bk) { bk.forEach(fn); }); });
+  }
+  function label(b) { return b.name || (b.spot ? b.spot.title : '') || (hasSound(b) ? (b.file || '無題') : ''); }
+  function isEmpty(b) { return !hasSound(b) && !b.hasAudio && !b.spot && !b.name; }
+
+  /* ---------- Build the two sections ---------- */
+  var padEls = [[], []], barEls = [[], []], tabEls = [[], []], slotLinks = [[], []];
+
+  [0, 1].forEach(function (sec) {
+    var wrap = document.createElement('section');
+    wrap.className = 'panel sec';
+    wrap.setAttribute('aria-label', SECS[sec]);
+    var head = document.createElement('div');
+    head.className = 'sechead';
+    head.innerHTML = '<h2>' + SEC_EN[sec] + '</h2><div class="btns"></div>';
+    var btns = head.querySelector('.btns');
+    if (sec === 0) {
+      var xf = document.createElement('button');
+      xf.type = 'button'; xf.className = 'btn'; xf.id = 'xf'; xf.textContent = 'クロスフェード';
+      xf.addEventListener('click', function () {
+        S.xf = !S.xf;
+        xf.setAttribute('aria-pressed', S.xf ? 'true' : 'false');
+        save();
+      });
+      btns.appendChild(xf);
+    }
+    var st = document.createElement('button');
+    st.type = 'button'; st.className = 'btn'; st.textContent = SECS[sec] + 'を停止';
+    st.addEventListener('click', function () { stopSec(sec, S.fade); });
+    btns.appendChild(st);
+    wrap.appendChild(head);
+
+    var tabs = document.createElement('div');
+    tabs.className = 'tabs';
+    tabs.setAttribute('role', 'group');
+    tabs.setAttribute('aria-label', SECS[sec] + 'のバンク');
+    for (var k = 0; k < NB; k++) {
+      (function (k) {
+        var t = document.createElement('button');
+        t.type = 'button'; t.className = 'tab'; t.textContent = 'BANK ' + (k + 1);
+        t.addEventListener('click', function () { S.page[sec] = k; renderSec(sec); save(); kick(); });
+        tabs.appendChild(t);
+        tabEls[sec].push(t);
+      })(k);
+    }
+    wrap.appendChild(tabs);
+
+    var grid = document.createElement('div');
+    grid.className = 'pads';
+    for (var i = 0; i < PER; i++) {
+      (function (i) {
+        var slot = document.createElement('div');
+        slot.className = 'slot';
+        var el = document.createElement('button');
+        el.type = 'button';
+        el.className = 'pad';
+        el.innerHTML =
+          '<span class="pt"><span class="pn">' + (i + 1) + '</span><span class="ps" hidden>SPOTIFY</span><span class="pk">' + KEYS[sec][i] + '</span></span>' +
+          '<span class="pname"></span><span class="prog"><i></i></span>';
+        el.addEventListener('pointerdown', function (e) {
+          if (editMode || assigning || e.button > 0) return;
+          e.preventDefault();
+          try { el.setPointerCapture(e.pointerId); } catch (err) { /* capture not supported */ }
+          press(sec, i, 'p' + e.pointerId);
+        });
+        var rel = function (e) { release('p' + e.pointerId); };
+        el.addEventListener('pointerup', rel);
+        el.addEventListener('pointercancel', rel);
+        el.addEventListener('lostpointercapture', rel);
+        el.addEventListener('click', function (e) {
+          if (assigning) { assignSpot(sec, i); return; }
+          if (editMode) { openDlg(sec, i); return; }
+          if (e.detail !== 0) return;
+          press(sec, i, 'c' + sec + i);
+          setTimeout(function () { release('c' + sec + i); }, 150);
+        });
+        el.addEventListener('dragover', function (e) { e.preventDefault(); });
+        el.addEventListener('drop', function (e) {
+          e.preventDefault();
+          if (isLocked()) return;
+          var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+          if (!f) return;
+          openDlg(sec, i);
+          loadFileToDraft(f);
+        });
+        var link = document.createElement('a');
+        link.className = 'plink';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.hidden = true;
+        link.addEventListener('click', function () { last = { sec: sec, i: i }; updateLcd(); });
+        slot.appendChild(el);
+        slot.appendChild(link);
+        grid.appendChild(slot);
+        padEls[sec].push(el);
+        slotLinks[sec].push(link);
+        barEls[sec].push(el.querySelector('.prog i'));
+      })(i);
+    }
+    wrap.appendChild(grid);
+    $('secs').appendChild(wrap);
+  });
+
+  function renderSec(sec) {
+    tabEls[sec].forEach(function (t, k) { t.setAttribute('aria-pressed', k === S.page[sec] ? 'true' : 'false'); });
+    padEls[sec].forEach(function (el, i) {
+      var b = cur(sec, i);
+      var empty = isEmpty(b);
+      el.dataset.c = empty ? 0 : b.color;
+      el.classList.toggle('empty', empty);
+      el.querySelector('.pname').textContent = empty ? '' : label(b);
+      el.querySelector('.ps').hidden = !b.spot;
+      el.setAttribute('aria-label', SECS[sec] + ' パッド' + (i + 1) + ' ' + (empty ? '空き' : label(b)));
+      var lk = slotLinks[sec][i];
+      if (b.spot && !editMode && !assigning) {
+        lk.href = spotUrl(b.spot.uri);
+        lk.setAttribute('aria-label', SECS[sec] + ' パッド' + (i + 1) + ' ' + label(b) + '（Spotify で開く）');
+        lk.hidden = false;
+      } else {
+        lk.hidden = true;
+        lk.removeAttribute('href');
+      }
+    });
+    var any = false;
+    eachBtn(function (b) { if (!isEmpty(b)) any = true; });
+    $('empty').hidden = any;
+    updateLcd();
+    kick();
+  }
+
+  /* ---------- LCD ---------- */
+  function infoText(b) {
+    if (b.spot) return 'Spotify ' + spotType(b.spot.uri) + ' · タップで開く';
+    var src = b.file || (b.hasAudio ? '読み込み中…' : '音声なし');
+    return src + ' · ' + MODE_SHORT[b.mode];
+  }
+  function updateLcd() {
+    var b = cur(last.sec, last.i);
+    $('lcd1').textContent = SECS[last.sec] + ' ' + (S.page[last.sec] + 1) + '-' + (last.i + 1) + ' ' + (label(b) || '空き');
+    if (!msgT) $('lcd2').textContent = infoText(b);
+  }
+  function setMsg(msg) {
+    $('lcd2').textContent = msg;
+    clearTimeout(msgT);
+    msgT = setTimeout(function () { msgT = null; updateLcd(); }, 2500);
+  }
+
+  /* ---------- Progress and live indicators ---------- */
+  var raf = 0;
+  function kick() { if (!raf) raf = requestAnimationFrame(frame); }
+  function frame() {
+    raf = 0;
+    var now = ctx ? ctx.currentTime : 0;
+    [0, 1].forEach(function (sec) {
+      padEls[sec].forEach(function (el, i) {
+        var b = cur(sec, i);
+        var vs = voices.filter(function (v) { return v.b === b; });
+        el.classList.toggle('playing', vs.length > 0);
+        if (vs.length) {
+          var v = vs[vs.length - 1];
+          var pos = Math.max(0, now - v.t0);
+          var frac = v.loop ? (pos % v.len) / v.len : Math.min(1, pos / v.len);
+          barEls[sec][i].style.transform = 'scaleX(' + frac.toFixed(3) + ')';
+        }
+      });
+      tabEls[sec].forEach(function (t, k) {
+        t.classList.toggle('live', voices.some(function (v) { return v.b.sec === sec && v.b.bk === k && !v.b.isDraft && !v.stopping; }));
+      });
+    });
+    if (voices.length) raf = requestAnimationFrame(frame);
+  }
+
+  /* ---------- Mixer ---------- */
+  var MIX = [
+    { id: 'mMaster', label: 'マスター', min: 0, max: 100, get: function () { return Math.round(S.master * 100); }, set: function (v) { S.master = v / 100; }, txt: function () { return Math.round(S.master * 100) + '%'; } },
+    { id: 'mFade', label: 'フェード時間', min: 0, max: 80, get: function () { return Math.round(S.fade * 10); }, set: function (v) { S.fade = v / 10; }, txt: function () { return S.fade.toFixed(1) + 's'; } },
+    { id: 'mMusic', label: '音楽の音量', min: 0, max: 100, get: function () { return Math.round(S.vols[0] * 100); }, set: function (v) { S.vols[0] = v / 100; }, txt: function () { return Math.round(S.vols[0] * 100) + '%'; } },
+    { id: 'mSe', label: '効果音の音量', min: 0, max: 100, get: function () { return Math.round(S.vols[1] * 100); }, set: function (v) { S.vols[1] = v / 100; }, txt: function () { return Math.round(S.vols[1] * 100) + '%'; } }
+  ];
+  var LOCK_SVG = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor"/><path class="sh" d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+  MIX.forEach(function (m, mi) {
+    var d = document.createElement('div');
+    d.className = 'mix';
+    d.innerHTML = '<div class="mixh"><label for="' + m.id + '">' + m.label + '<output id="' + m.id + 'O"></output></label>' +
+      '<button type="button" class="lockb" id="' + m.id + 'L" aria-pressed="false" aria-label="' + m.label + 'をロック">' + LOCK_SVG + '</button></div>' +
+      '<input id="' + m.id + '" type="range" min="' + m.min + '" max="' + m.max + '" step="1">';
+    $('mixgrid').appendChild(d);
+    $(m.id + 'L').addEventListener('click', function () {
+      S.locks[mi] = !S.locks[mi];
+      syncMixer();
+      save();
+      setMsg(m.label + (S.locks[mi] ? 'をロックしました' : 'のロックを解除しました') + (mi === 0 && S.locks[0] ? '（フェード時間以外は操作できません）' : ''));
+    });
+    $(m.id).addEventListener('input', function (e) {
+      m.set(parseFloat(e.target.value));
+      $(m.id + 'O').textContent = m.txt();
+      applyGain();
+      save();
+    });
+  });
+  function syncMixer() {
+    MIX.forEach(function (m, mi) {
+      $(m.id).value = m.get(); $(m.id + 'O').textContent = m.txt();
+      /* with the master locked, everything except the fade time is frozen */
+      var frozen = mi !== 1 && S.locks[0] && mi !== 0;
+      $(m.id).disabled = !!S.locks[mi] || frozen;
+      $(m.id + 'L').disabled = frozen;
+      $(m.id + 'L').setAttribute('aria-pressed', S.locks[mi] ? 'true' : 'false');
+    });
+    var allOn = S.locks.every(Boolean);
+    $('lockAll').setAttribute('aria-pressed', allOn ? 'true' : 'false');
+    $('lockAll').textContent = allOn ? '全ロック解除' : '全ロック';
+    $('soundBtn').setAttribute('aria-pressed', S.on ? 'true' : 'false');
+    $('soundBtn').textContent = S.on ? '音 ON' : '音 OFF';
+    $('xf').setAttribute('aria-pressed', S.xf ? 'true' : 'false');
+  }
+  $('soundBtn').addEventListener('click', function () {
+    S.on = !S.on;
+    syncMixer();
+    applyGain();
+    save();
+  });
+  $('lockAll').addEventListener('click', function () {
+    var to = !S.locks.every(Boolean);
+    S.locks = [to, to, to, to];
+    syncMixer();
+    save();
+    setMsg(to ? 'すべてロックしました' : 'すべてのロックを解除しました');
+  });
+  $('stopAll').addEventListener('click', function () { stopAll(0.05); });
+  $('fadeAll').addEventListener('click', function () { stopAll(S.fade); });
+
+  function setEdit(on) {
+    editMode = on;
+    if (on) { stopAll(0.05); cancelAssign(true); }
+    $('editBtn').setAttribute('aria-pressed', on ? 'true' : 'false');
+    $('secs').classList.toggle('editing', on);
+    renderSec(0);
+    renderSec(1);
+    setMsg(on ? '編集モード：パッドをタップ' : '演奏モード');
+  }
+  $('editBtn').addEventListener('click', function () { setEdit(!editMode); });
+
+  /* ---------- Edit dialog ---------- */
+  var draft = null, dTarget = null;
+
+  function copyFields(dst, src) {
+    FIELDS.forEach(function (k) { dst[k] = src[k]; });
+    dst.eq = src.eq.slice();
+    dst.spot = src.spot ? { uri: src.spot.uri, title: src.spot.title, sub: src.spot.sub } : null;
+    dst._dec = null;
+    dst._bad = false;
+  }
+  function cloneBtn(b) {
+    var d = newButton(b.sec, b.bk, b.idx);
+    copyFields(d, b);
+    d.isDraft = true;
+    return d;
+  }
+  function fmtDb(x) { return (x > 0 ? '+' : '') + x + ' dB'; }
+
+  var CTL = [
+    { id: 'dVol', label: '最大音量', min: 0, max: 100, step: 1, grp: 'dSliders', get: function (d) { return Math.round(d.vol * 100); }, set: function (d, v) { d.vol = v / 100; }, txt: function (d) { return Math.round(d.vol * 100) + '%'; } },
+    { id: 'dPan', label: 'バランス', min: -100, max: 100, step: 1, grp: 'dSliders', get: function (d) { return Math.round(d.pan * 100); }, set: function (d, v) { d.pan = v / 100; }, txt: function (d) { return d.pan === 0 ? '中央' : (d.pan < 0 ? 'L ' : 'R ') + Math.round(Math.abs(d.pan) * 100); } },
+    { id: 'dStart', label: '再生位置', min: 0, max: 0, step: 0.1, grp: 'dSliders', get: function (d) { return d.start; }, set: function (d, v) { d.start = v; }, txt: function (d) { return d.start.toFixed(1) + ' 秒'; } },
+    { id: 'dFin', label: 'フェードイン', min: 0, max: 80, step: 1, grp: 'dSliders', get: function (d) { return Math.round(d.fadeIn * 10); }, set: function (d, v) { d.fadeIn = v / 10; }, txt: function (d) { return d.fadeIn.toFixed(1) + ' 秒'; } },
+    { id: 'dFout', label: 'フェードアウト', min: 0, max: 80, step: 1, grp: 'dSliders', get: function (d) { return Math.round(d.fadeOut * 10); }, set: function (d, v) { d.fadeOut = v / 10; }, txt: function (d) { return d.fadeOut.toFixed(1) + ' 秒'; } },
+    { id: 'dEqL', label: '低域', min: -12, max: 12, step: 1, grp: 'dEq', get: function (d) { return d.eq[0]; }, set: function (d, v) { d.eq[0] = v; }, txt: function (d) { return fmtDb(d.eq[0]); } },
+    { id: 'dEqM', label: '中域', min: -12, max: 12, step: 1, grp: 'dEq', get: function (d) { return d.eq[1]; }, set: function (d, v) { d.eq[1] = v; }, txt: function (d) { return fmtDb(d.eq[1]); } },
+    { id: 'dEqH', label: '高域', min: -12, max: 12, step: 1, grp: 'dEq', get: function (d) { return d.eq[2]; }, set: function (d, v) { d.eq[2] = v; }, txt: function (d) { return fmtDb(d.eq[2]); } }
+  ];
+  CTL.forEach(function (c) {
+    var r = document.createElement('div');
+    r.className = 'frow';
+    r.innerHTML = '<label class="fl" for="' + c.id + '">' + c.label + '</label>' +
+      '<input id="' + c.id + '" type="range" min="' + c.min + '" max="' + c.max + '" step="' + c.step + '" value="0">' +
+      '<output id="' + c.id + 'O"></output>';
+    $(c.grp).appendChild(r);
+    $(c.id).addEventListener('input', function (e) {
+      if (!draft) return;
+      c.set(draft, parseFloat(e.target.value));
+      $(c.id + 'O').textContent = c.txt(draft);
+    });
+  });
+
+  var swEls = [];
+  COLORS.forEach(function (n, k) {
+    var s = document.createElement('button');
+    s.type = 'button';
+    s.className = 'sw';
+    s.style.background = k === 0 ? 'var(--pad)' : 'var(--c' + k + ')';
+    s.setAttribute('aria-label', n);
+    s.addEventListener('click', function () {
+      if (!draft) return;
+      draft.color = k;
+      swEls.forEach(function (x, j) { x.setAttribute('aria-pressed', j === k ? 'true' : 'false'); });
+    });
+    $('swatches').appendChild(s);
+    swEls.push(s);
+  });
+
+  function setNote(msg) { $('dNote').textContent = msg; }
+
+  function syncDlg() {
+    var d = draft;
+    if (!d) return;
+    $('dTitle').textContent = SECS[d.sec] + ' バンク' + (d.bk + 1) + ' · パッド' + (d.idx + 1);
+    $('dName').value = d.name;
+    $('dSpot').value = d.spot ? spotUrl(d.spot.uri) : '';
+    $('dFile').textContent = d.file || 'ファイルを選択';
+    $('dMode').value = d.mode;
+    $('dLoop').checked = d.loop;
+    swEls.forEach(function (s, k) { s.setAttribute('aria-pressed', k === d.color ? 'true' : 'false'); });
+    var dur = d.buffer ? d.buffer.duration : 0;
+    var st = $('dStart');
+    st.max = String(Math.max(0, Math.floor(dur * 10) / 10));
+    st.disabled = dur === 0;
+    CTL.forEach(function (c) {
+      $(c.id).value = c.get(d);
+      $(c.id + 'O').textContent = c.txt(d);
+    });
+    $('dDel').disabled = !hasSound(d) && !d.spot;
+    $('dPrev').disabled = !hasSound(d);
+    $('dPaste').disabled = !clip;
+    if (hasSound(d) && !d.buffer && !d._bad) {
+      ensure();
+      needBuffer(d).then(function () { if (draft === d) syncDlg(); });
+    }
+  }
+
+  function openDlg(sec, i) {
+    if (isLocked()) return;
+    dTarget = cur(sec, i);
+    draft = cloneBtn(dTarget);
+    last = { sec: sec, i: i };
+    updateLcd();
+    setNote('');
+    $('dlg').hidden = false;
+    syncDlg();
+    $('dialog').scrollTop = 0;
+    $('dialog').focus();
+  }
+  function closeDlg() {
+    if (draft && ctx) {
+      var d = draft;
+      voices.filter(function (v) { return v.b === d; }).forEach(function (v) { stopVoice(v, 0.03); });
+    }
+    draft = null;
+    dTarget = null;
+    $('dlg').hidden = true;
+  }
+
+  $('dName').addEventListener('input', function (e) { if (draft) draft.name = e.target.value.slice(0, 24); });
+  $('dMode').addEventListener('change', function (e) { if (draft) draft.mode = e.target.value; });
+  $('dLoop').addEventListener('change', function (e) { if (draft) draft.loop = e.target.checked; });
+
+  $('dFile').addEventListener('click', function () { $('dFileIn').click(); });
+  $('dFileIn').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (f) loadFileToDraft(f);
+    e.target.value = '';
+  });
+
+  function loadFileToDraft(file) {
+    var d = draft;
+    if (!d) return;
+    if (file.size > 25 * 1024 * 1024) { setNote('25MB 以下のファイルを選んでください'); return; }
+    setNote('読み込み中…');
+    ensure();
+    readBuf(file).then(function (ab) {
+      return decode(ab.slice(0)).then(function (buf) { return { ab: ab, buf: buf }; });
+    }).then(function (r) {
+      if (draft !== d) return;
+      voices.filter(function (v) { return v.b === d; }).forEach(function (v) { stopVoice(v, 0.03); });
+      d.raw = r.ab; d.buffer = r.buf; d._dec = null; d._bad = false;
+      d.file = file.name.slice(0, 80); d.hasAudio = true; d.start = 0; d.spot = null;
+      if (!d.name) d.name = file.name.replace(/\.[^.]+$/, '').slice(0, 24);
+      setNote('読み込みました');
+      syncDlg();
+    }).catch(function () {
+      if (draft === d) setNote('この形式は読み込めませんでした');
+    });
+  }
+
+  $('dPrev').addEventListener('click', function () {
+    var d = draft;
+    if (!d) return;
+    ensure();
+    var vs = voices.filter(function (v) { return v.b === d && !v.stopping; });
+    if (vs.length) { vs.forEach(function (v) { stopVoice(v, 0.05); }); return; }
+    needBuffer(d).then(function (buf) {
+      if (!buf) { setNote('この音声は再生できません'); return; }
+      if (draft === d) startVoice(d, null);
+    });
+  });
+  $('dCopy').addEventListener('click', function () {
+    if (!draft) return;
+    clip = cloneBtn(draft);
+    $('dPaste').disabled = false;
+    setNote('コピーしました');
+  });
+  $('dPaste').addEventListener('click', function () {
+    if (!draft || !clip) return;
+    voices.filter(function (v) { return v.b === draft; }).forEach(function (v) { stopVoice(v, 0.03); });
+    copyFields(draft, clip);
+    setNote('貼り付けました');
+    syncDlg();
+  });
+  $('dReset').addEventListener('click', function () {
+    if (!draft) return;
+    setDefaults(draft, false);
+    setNote('設定をリセットしました');
+    syncDlg();
+  });
+  $('dDel').addEventListener('click', function () {
+    var d = draft;
+    if (!d) return;
+    voices.filter(function (v) { return v.b === d; }).forEach(function (v) { stopVoice(v, 0.03); });
+    d.raw = null; d.buffer = null; d._dec = null; d._bad = false;
+    d.file = ''; d.hasAudio = false; d.spot = null;
+    setDefaults(d, true);
+    setNote('外しました');
+    syncDlg();
+  });
+
+  $('dCancel').addEventListener('click', closeDlg);
+  $('dlg').addEventListener('click', function (e) { if (e.target === $('dlg')) closeDlg(); });
+  $('dOk').addEventListener('click', function () {
+    var d = draft, b = dTarget;
+    if (!d || !b) return;
+    var spText = $('dSpot').value.trim();
+    if (spText) {
+      var sp = parseSpotify(spText);
+      if (!sp) { setNote('Spotify のリンクの形式が正しくありません'); return; }
+      if (hasSound(d) || d.hasAudio) { setNote('音声と Spotify のリンクは同じパッドに設定できません。どちらかを外してください'); return; }
+      var same = d.spot && d.spot.uri === sp.uri;
+      d.spot = { uri: sp.uri, title: d.name || (same ? d.spot.title : '') || 'Spotify の' + SPOT_TYPES[sp.type], sub: same ? d.spot.sub : '' };
+      if (!d.color) d.color = 5;
+    } else {
+      d.spot = null;
+    }
+    var changedAudio = d.raw !== b.raw;
+    if (changedAudio) stopButton(b, 0.05);
+    copyFields(b, d);
+    if (changedAudio) {
+      if (b.hasAudio && b.raw) {
+        idbPut(bkey(b), { raw: b.raw }).catch(function () {
+          b.hasAudio = false;
+          save();
+          setMsg('保存できませんでした。再読み込みすると消えます');
+        });
+      } else {
+        idbDel(bkey(b)).catch(function () {});
+      }
+    }
+    var sec = b.sec;
+    closeDlg();
+    save();
+    renderSec(sec);
+  });
+
+  /* ---------- Spotify search and assign ---------- */
+  var mcpP = null;
+  function getMcp() {
+    if (!mcpP) {
+      mcpP = (window.claude && typeof window.claude.use === 'function')
+        ? window.claude.use('mcp').catch(function () { return null; })
+        : Promise.resolve(null);
+    }
+    return mcpP;
+  }
+  function spNote(msg) { $('spNote').textContent = msg; }
+
+  function spotError(err) {
+    var c = err && err.code;
+    if (c === 'no_mcp' || c === 'not_granted' || c === 'capability_disabled' || c === 'capability_removed') {
+      return 'この表示では Spotify の検索を使えません。Spotify のリンクを貼り付ければ使えます。';
+    }
+    if (c === 'server_not_connected' || c === 'selection_required') {
+      return 'Spotify が接続されていません。claude.ai の設定のコネクタで Spotify を追加してください。';
+    }
+    if (c === 'needs_reauth') {
+      return 'Spotify の接続が切れています。claude.ai の設定のコネクタで再接続してください。';
+    }
+    if (c === 'not_in_manifest' || c === 'approval_required' || c === 'blocked_by_policy') {
+      return 'このページでの Spotify の利用が許可されていません。';
+    }
+    if (c === 'server_unavailable' || c === 'upstream_error' || c === 'rate_limited') {
+      return 'Spotify に接続できませんでした。少し待ってからもう一度試してください。';
+    }
+    return 'Spotify の検索に失敗しました。';
+  }
+
+  function parseResults(res) {
+    var p = res && res.payload;
+    if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { p = null; } }
+    if (!p && res && res.content && res.content[0] && typeof res.content[0].text === 'string') {
+      try { p = JSON.parse(res.content[0].text); } catch (e2) { p = null; }
+    }
+    var arr = p && Array.isArray(p.entities) ? p.entities : [];
+    var out = [];
+    arr.forEach(function (e) {
+      var sp = parseSpotify(e && e.uri);
+      if (!sp) return;
+      var names = (Array.isArray(e.creators) ? e.creators : []).map(function (c) { return c && c.name; }).filter(Boolean).join(', ');
+      out.push({ uri: sp.uri, type: sp.type, title: String(e.name || '').slice(0, 80) || '(無題)', sub: names.slice(0, 80) });
+    });
+    return out.slice(0, 10);
+  }
+
+  function renderResults(items) {
+    var ul = $('spList');
+    ul.textContent = '';
+    items.forEach(function (it) {
+      var li = document.createElement('li');
+      li.className = 'spitem';
+      var meta = document.createElement('div');
+      meta.className = 'spmeta';
+      var ty = document.createElement('span'); ty.className = 'sptype'; ty.textContent = SPOT_TYPES[it.type];
+      var ti = document.createElement('span'); ti.className = 'sptitle'; ti.textContent = it.title;
+      var su = document.createElement('span'); su.className = 'spsub'; su.textContent = it.sub;
+      meta.appendChild(ty); meta.appendChild(ti);
+      if (it.sub) meta.appendChild(su);
+      var act = document.createElement('div');
+      act.className = 'spbtns';
+      var as = document.createElement('button');
+      as.type = 'button'; as.className = 'btn'; as.textContent = 'パッドに割り当て';
+      as.addEventListener('click', function () { startAssign(it); });
+      var a = document.createElement('a');
+      a.className = 'btn'; a.href = spotUrl(it.uri); a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'Spotifyで開く';
+      act.appendChild(as); act.appendChild(a);
+      li.appendChild(meta); li.appendChild(act);
+      ul.appendChild(li);
+    });
+  }
+
+  var searching = false;
+  $('spForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var q = $('spQ').value.trim();
+    if (!q) return;
+    var direct = parseSpotify(q);
+    if (direct) {
+      renderResults([{ uri: direct.uri, type: direct.type, title: 'Spotify の' + SPOT_TYPES[direct.type], sub: '貼り付けたリンク' }]);
+      spNote('');
+      return;
+    }
+    if (searching) return;
+    searching = true;
+    $('spGo').disabled = true;
+    spNote('検索中…');
+    getMcp().then(function (mcp) {
+      if (!mcp) throw { code: 'no_mcp' };
+      return mcp.callTool('Spotify', 'search', { prompt: q.slice(0, 1000), language: 'ja-JP', limit: 8 });
+    }).then(function (res) {
+      var items = parseResults(res);
+      renderResults(items);
+      spNote(items.length ? '' : '見つかりませんでした。');
+    }).catch(function (err) {
+      renderResults([]);
+      spNote(spotError(err));
+    }).then(function () {
+      searching = false;
+      $('spGo').disabled = false;
+    });
+  });
+
+  function startAssign(item) {
+    if (editMode) setEdit(false);
+    assigning = item;
+    $('secs').classList.add('assigning');
+    var n = $('spNote');
+    n.textContent = '';
+    var t = document.createElement('span');
+    t.textContent = '「' + item.title + '」を割り当てるパッドをタップしてください。';
+    var c = document.createElement('button');
+    c.type = 'button'; c.className = 'btn'; c.textContent = 'やめる';
+    c.addEventListener('click', function () { cancelAssign(false); });
+    n.appendChild(t); n.appendChild(c);
+    renderSec(0);
+    renderSec(1);
+    setMsg('割り当て先のパッドをタップ');
+  }
+  function cancelAssign(silent) {
+    if (!assigning) return;
+    assigning = null;
+    $('secs').classList.remove('assigning');
+    spNote('');
+    renderSec(0);
+    renderSec(1);
+    if (!silent) setMsg('割り当てをやめました');
+  }
+  function assignSpot(sec, i) {
+    var b = cur(sec, i);
+    var it = assigning;
+    if (!it) return;
+    if (hasSound(b) || b.hasAudio) {
+      setMsg('音声が入っているパッドには割り当てられません');
+      return;
+    }
+    b.spot = { uri: it.uri, title: it.title, sub: it.sub };
+    b.name = it.title.slice(0, 24);
+    if (!b.color) b.color = 5;
+    assigning = null;
+    $('secs').classList.remove('assigning');
+    spNote('');
+    last = { sec: sec, i: i };
+    save();
+    renderSec(0);
+    renderSec(1);
+    setMsg('割り当てました');
+  }
+
+  /* ---------- Projects ---------- */
+  var adminOpen = false;
+  function isLocked() { return PF.adm.on && !adminOpen; }
+  function curName() {
+    for (var i = 0; i < IDX.list.length; i++) if (IDX.list[i].id === S.id) return IDX.list[i].name;
+    return '';
+  }
+  function updateName() { $('projName').textContent = curName() + (isLocked() ? ' · ロック中' : ''); }
+  function cleanName(x, fallback) { x = String(x || '').replace(/\s+/g, ' ').trim().slice(0, 30); return x || fallback; }
+  function uniqueName(base) {
+    var names = IDX.list.map(function (x) { return x.name; });
+    if (names.indexOf(base) < 0) return base;
+    for (var n = 2; n < 1000; n++) if (names.indexOf(base + ' ' + n) < 0) return base + ' ' + n;
+    return base;
+  }
+  function hydrate() {
+    var proj = S;
+    eachBtn(function (b) {
+      if (!b.hasAudio) return;
+      idbGet(bkey(b)).then(function (v) {
+        if (S !== proj) return;
+        if (v && v.raw) { b.raw = v.raw; } else { b.hasAudio = false; b.file = ''; }
+        renderSec(b.sec);
+      }).catch(function () {
+        if (S !== proj) return;
+        b.hasAudio = false; b.file = '';
+        renderSec(b.sec);
+      });
+    });
+  }
+  function activate(p) {
+    stopAll(0.03);
+    cancelAssign(true);
+    if (editMode) setEdit(false);
+    S = p;
+    IDX.cur = p.id;
+    saveIndex();
+    last = { sec: 0, i: 0 };
+    syncMixer();
+    applyGain();
+    renderSec(0);
+    renderSec(1);
+    hydrate();
+    updateName();
+  }
+  function newProject(name) {
+    saveNow();
+    var p = emptyProject();
+    p.id = newId();
+    IDX.list.push({ id: p.id, name: uniqueName(cleanName(name, 'プロジェクト')) });
+    var prev = S; S = p; saveNow(); S = prev;
+    activate(p);
+  }
+  function openProject(id) {
+    saveNow();
+    var p = loadProject(id) || emptyProject();
+    p.id = id;
+    activate(p);
+  }
+  function saveAs(name) {
+    saveNow();
+    var id = newId(), oldId = S.id, jobs = [];
+    eachBtn(function (b) {
+      if (!b.hasAudio) return;
+      var k = baseKey(b), nk = keyFor(id, k);
+      if (b.raw) jobs.push(idbPut(nk, { raw: b.raw }));
+      else jobs.push(idbGet(keyFor(oldId, k)).then(function (v) { return v ? idbPut(nk, v) : null; }));
+    });
+    return Promise.all(jobs).then(function () {
+      if (!lsSet(pkey(id), JSON.stringify(serProject(S)))) throw new Error('ls');
+      IDX.list.push({ id: id, name: uniqueName(cleanName(name, 'プロジェクト')) });
+      S.id = id;
+      IDX.cur = id;
+      saveIndex();
+      updateName();
+    }).catch(function (e) {
+      idbDelProject(id).catch(function () {});
+      lsDel(pkey(id));
+      throw e;
+    });
+  }
+  function removeProject(id) {
+    var wasCur = id === S.id;
+    IDX.list = IDX.list.filter(function (x) { return x.id !== id; });
+    lsDel(pkey(id));
+    idbDelProject(id).catch(function () {});
+    var fresh = null;
+    if (!IDX.list.length) {
+      fresh = emptyProject();
+      fresh.id = newId();
+      IDX.list.push({ id: fresh.id, name: 'プロジェクト1' });
+    }
+    if (wasCur) {
+      var p = fresh || loadProject(IDX.list[0].id) || emptyProject();
+      p.id = fresh ? fresh.id : IDX.list[0].id;
+      activate(p);
+    } else {
+      saveIndex();
+    }
+  }
+  function eraseAll() {
+    stopAll(0.03);
+    IDX.list.forEach(function (x) { lsDel(pkey(x.id)); });
+    lsDel(LSI);
+    idbClear().catch(function () {});
+    IDX = { cur: 'main', list: [{ id: 'main', name: 'プロジェクト1' }] };
+    var p = emptyProject();
+    p.id = 'main';
+    activate(p);
+  }
+
+  /* ---------- Export / import (file) ---------- */
+  function toB64(ab) {
+    var u = new Uint8Array(ab), out = [];
+    for (var i = 0; i < u.length; i += 32760) out.push(btoa(String.fromCharCode.apply(null, u.subarray(i, i + 32760))));
+    return out.join('');
+  }
+  function fromB64(str) {
+    var bin = atob(str), u = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return u.buffer;
+  }
+  function exportProject() {
+    saveNow();
+    var proj = S, nm = curName(), jobs = [];
+    eachBtn(function (b) {
+      if (!b.hasAudio) return;
+      var k = baseKey(b);
+      if (b.raw) jobs.push(Promise.resolve([k, b.raw]));
+      else jobs.push(idbGet(bkey(b)).then(function (v) { return [k, v && v.raw]; }));
+    });
+    return Promise.all(jobs).then(function (pairs) {
+      var parts = ['{"app":"pad-eight","v":1,"name":' + JSON.stringify(nm) + ',"project":' + JSON.stringify(serProject(proj)) + ',"audio":{'];
+      var first = true;
+      pairs.forEach(function (pr) {
+        if (!pr[1]) return;
+        parts.push((first ? '' : ',') + '"' + pr[0] + '":"' + toB64(pr[1]) + '"');
+        first = false;
+      });
+      parts.push('}}');
+      var blob = new Blob(parts, { type: 'application/json' });
+      var fname = (nm.replace(/[\\/:*?"<>|]/g, '_') || 'project') + '.json';
+      var dlp = window.claude && typeof window.claude.use === 'function'
+        ? window.claude.use('downloads').catch(function () { return null; })
+        : Promise.resolve(null);
+      return dlp.then(function (dl) {
+        if (dl) return dl.save({ filename: fname, data: blob });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = fname;
+        document.body.appendChild(a); a.click(); a.remove();
+        return { status: 'saved' };
+      });
+    });
+  }
+  function importFile(file) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+      r.readAsText(file);
+    }).then(function (txt) {
+      var j = JSON.parse(txt);
+      if (!j || j.app !== 'pad-eight' || !j.project || !Array.isArray(j.project.banks) || j.project.banks.length !== 2) throw new Error('format');
+      saveNow();
+      var id = newId(), jobs = [];
+      var audio = j.audio || {};
+      Object.keys(audio).forEach(function (k) {
+        if (!/^\d+-\d+-\d+$/.test(k) || typeof audio[k] !== 'string') return;
+        jobs.push(idbPut(keyFor(id, k), { raw: fromB64(audio[k]) }));
+      });
+      return Promise.all(jobs).then(function () {
+        if (!lsSet(pkey(id), JSON.stringify(j.project))) throw new Error('ls');
+        var p = loadProject(id);
+        if (!p) throw new Error('format');
+        IDX.list.push({ id: id, name: uniqueName(cleanName(j.name, 'プロジェクト')) });
+        activate(p);
+      }).catch(function (e) {
+        idbDelProject(id).catch(function () {});
+        lsDel(pkey(id));
+        throw e;
+      });
+    });
+  }
+  function pickFile() {
+    var fi = document.createElement('input');
+    fi.type = 'file';
+    fi.accept = 'application/json,.json,text/plain';
+    fi.addEventListener('change', function () {
+      var f = fi.files && fi.files[0];
+      if (!f) return;
+      mmsg('読み込み中…');
+      importFile(f).then(function () {
+        mStack = ['root'];
+        render();
+        mmsg('「' + curName() + '」として読み込みました');
+      }).catch(function (e) {
+        mmsg(e && e.message === 'format' || e instanceof SyntaxError ? 'Play on Sound のファイルではありません' : '読み込めませんでした（保存領域が足りないかもしれません）');
+      });
+    });
+    fi.click();
+  }
+
+  /* ---------- Preferences and lock ---------- */
+  function applyPrefs() {
+    var on = PF.keys === null ? !!(window.matchMedia && window.matchMedia('(hover: hover)').matches) : PF.keys;
+    document.body.classList.toggle('keys-on', on);
+    document.body.classList.toggle('nobars', !PF.bars);
+    document.body.setAttribute('data-pad', PF.pad);
+    applyAudioSession();
+    applyWake();
+  }
+  function applyLock() {
+    var l = isLocked();
+    $('editBtn').disabled = l;
+    $('spot').hidden = l;
+    if (l) { cancelAssign(true); if (editMode) setEdit(false); }
+    updateName();
+  }
+  function hashPin(pin, salt) {
+    var str = salt + ':' + pin;
+    try {
+      if (window.crypto && crypto.subtle && window.TextEncoder) {
+        return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(function (buf) {
+          return Array.prototype.map.call(new Uint8Array(buf), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+        });
+      }
+    } catch (e) { /* fall through */ }
+    var h = 5381;
+    for (var i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
+    return Promise.resolve('x' + h.toString(16));
+  }
+
+  /* ---------- Menu ---------- */
+  var mBody = $('mBody'), mStack = [], pendingDel = null, lastScreen = '';
+  function mk(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function mmsg(t) { $('mMsg').textContent = t || ''; }
+  function group() { var g = mk('div', 'mgrp'); mBody.appendChild(g); return g; }
+  function row(g, label, sub, fn, o) {
+    var b = mk('button', 'mrow' + (o && o.cur ? ' cur' : ''));
+    b.type = 'button';
+    var t = mk('span', 'mt');
+    t.appendChild(mk('span', '', label));
+    if (sub) t.appendChild(mk('small', '', sub));
+    b.appendChild(t);
+    if (fn && !(o && o.noChev)) b.appendChild(mk('span', 'chev'));
+    if (o && o.disabled) b.disabled = true; else if (fn) b.addEventListener('click', fn);
+    g.appendChild(b);
+    return b;
+  }
+  function toggleRow(g, label, sub, on, fn) {
+    var b = row(g, label, sub, null);
+    b.appendChild(mk('span', 'pill', on ? 'ON' : 'OFF'));
+    b.setAttribute('role', 'switch');
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+    b.addEventListener('click', function () { fn(!on); render(); });
+  }
+  function segRow(g, label, opts, val, fn) {
+    var r = mk('div', 'mrow');
+    r.appendChild(mk('span', 'mt', label));
+    var sg = mk('span', 'seg');
+    sg.setAttribute('role', 'group');
+    sg.setAttribute('aria-label', label);
+    opts.forEach(function (o) {
+      var b = mk('button', 'sbtn', o[1]);
+      b.type = 'button';
+      b.setAttribute('aria-pressed', o[0] === val ? 'true' : 'false');
+      b.addEventListener('click', function () { fn(o[0]); render(); });
+      sg.appendChild(b);
+    });
+    r.appendChild(sg);
+    g.appendChild(r);
+  }
+  function note(t) { mBody.appendChild(mk('p', 'mnote', t)); }
+  function text(t) { mBody.appendChild(mk('p', 'mtext', t)); }
+  function head(t) { mBody.appendChild(mk('div', 'mh', t)); }
+  function list(items) {
+    var ul = mk('ul', 'mlist');
+    items.forEach(function (x) {
+      var li = document.createElement('li');
+      if (Array.isArray(x)) {
+        x.forEach(function (p) {
+          if (p.k) li.appendChild(mk('kbd', '', p.k)); else li.appendChild(document.createTextNode(p));
+        });
+      } else li.textContent = x;
+      ul.appendChild(li);
+    });
+    mBody.appendChild(ul);
+  }
+  function input(value, o) {
+    var i = document.createElement('input');
+    i.type = 'text';
+    i.className = 'minput' + (o && o.pin ? ' pin' : '');
+    i.value = value || '';
+    i.maxLength = (o && o.max) || 30;
+    i.setAttribute('autocomplete', 'off');
+    i.setAttribute('autocapitalize', 'off');
+    i.setAttribute('autocorrect', 'off');
+    i.setAttribute('spellcheck', 'false');
+    if (o && o.label) i.setAttribute('aria-label', o.label);
+    if (o && o.pin) i.setAttribute('inputmode', 'numeric');
+    mBody.appendChild(i);
+    return i;
+  }
+  function actions(btns) {
+    var d = mk('div', 'mact');
+    btns.forEach(function (x) {
+      var b = mk('button', 'btn' + (x.cls ? ' ' + x.cls : ''), x.t);
+      b.type = 'button';
+      b.addEventListener('click', x.fn);
+      d.appendChild(b);
+    });
+    mBody.appendChild(d);
+    return d;
+  }
+
+  var TITLES = { root: 'メニュー', 'new': '新規作成', open: '開く', saveas: '名前を付けて保存', del: '削除', delc: '削除の確認', display: '表示', settings: '設定', erase: 'データの消去', admin: '管理者モード', features: '機能', help: 'Web説明' };
+  var SCREENS = {};
+
+  SCREENS.root = function () {
+    var lk = isLocked();
+    var g = group();
+    row(g, '新規作成', '空のプロジェクトを作る', function () { go('new'); }, { disabled: lk });
+    row(g, '開く', IDX.list.length + ' 件のプロジェクト', function () { go('open'); });
+    row(g, '上書き保存', curName(), function () {
+      mmsg(saveNow() ? '「' + curName() + '」を保存しました' : '保存できませんでした（ブラウザの保存領域がいっぱいかもしれません）');
+    }, { noChev: true });
+    row(g, '名前を付けて保存', '音声も含めて複製します', function () { go('saveas'); }, { disabled: lk });
+    row(g, '削除', 'プロジェクトを削除', function () { go('del'); }, { disabled: lk });
+    var gf = group();
+    row(gf, 'ファイルに書き出す', 'バックアップ。他の端末へ移せます', function () {
+      mmsg('書き出し中…');
+      exportProject().then(function () { mmsg('書き出しました'); }).catch(function (e) {
+        var c = e && e.code;
+        mmsg(c === 'declined' ? '書き出しをやめました' : c === 'unavailable' || c === 'not_granted' ? 'この表示ではファイルを保存できません' : '書き出せませんでした');
+      });
+    }, { noChev: true });
+    row(gf, 'ファイルから読み込む', '書き出したファイルを新しいプロジェクトとして開く', pickFile, { noChev: true, disabled: lk });
+    var g2 = group();
+    row(g2, '表示', 'キー表示・進行バー・パッドの高さ', function () { go('display'); });
+    row(g2, '設定', '同時発音数・iPhone向け設定', function () { go('settings'); });
+    row(g2, '管理者モード', PF.adm.on ? (lk ? 'ロック中' : 'ロック機能オン（解除中）') : 'PINで編集をロック', function () { go('admin'); });
+    row(g2, '機能', null, function () { go('features'); });
+    var g3 = group();
+    row(g3, 'Web説明', '使い方とiPhone・iPadの注意', function () { go('help'); });
+    note('プロジェクトは変更のたびに自動で保存されます。ブラウザ上のページなので「アプリの終了」はありません。ブラウザやタブを閉じてください。');
+  };
+  SCREENS['new'] = function () {
+    text('新しい空のプロジェクトを作って切り替えます。今のプロジェクトは自動で保存されます。');
+    var i = input(uniqueName('プロジェクト'), { label: 'プロジェクト名' });
+    actions([{ t: '作成', cls: 'primary', fn: function () {
+      newProject(i.value);
+      closeMenu();
+      setMsg('「' + curName() + '」を作りました');
+    } }]);
+  };
+  SCREENS.open = function () {
+    var g = group();
+    IDX.list.forEach(function (x) {
+      row(g, x.name, x.id === S.id ? '現在開いています' : null, function () {
+        if (x.id !== S.id) openProject(x.id);
+        closeMenu();
+        setMsg('「' + curName() + '」を開きました');
+      }, { cur: x.id === S.id, noChev: true });
+    });
+  };
+  SCREENS.saveas = function () {
+    text('今のプロジェクトを別の名前で保存し、そちらを開きます。読み込んだ音声も複製されます。');
+    var i = input(uniqueName(curName() + ' コピー'), { label: '新しい名前' });
+    var d = actions([{ t: '保存', cls: 'primary', fn: function () {
+      var btn = d.firstChild;
+      btn.disabled = true;
+      saveAs(i.value).then(function () {
+        mStack = ['root'];
+        render();
+        mmsg('「' + curName() + '」として保存しました');
+      }).catch(function () {
+        btn.disabled = false;
+        mmsg('保存できませんでした（ブラウザの保存領域がいっぱいかもしれません）');
+      });
+    } }]);
+  };
+  SCREENS.del = function () {
+    var g = group();
+    IDX.list.forEach(function (x) {
+      row(g, x.name, x.id === S.id ? '現在開いています' : null, function () { pendingDel = x.id; go('delc'); }, { cur: x.id === S.id });
+    });
+  };
+  SCREENS.delc = function () {
+    var nm = '';
+    IDX.list.forEach(function (x) { if (x.id === pendingDel) nm = x.name; });
+    if (!nm) { backMenu(); return; }
+    text('「' + nm + '」を削除します。パッドの設定と読み込んだ音声も消え、元に戻せません。');
+    actions([
+      { t: '削除する', cls: 'danger', fn: function () {
+        removeProject(pendingDel);
+        pendingDel = null;
+        mStack = ['root', 'del'];
+        render();
+        mmsg('削除しました');
+      } },
+      { t: 'キャンセル', fn: backMenu }
+    ]);
+  };
+  SCREENS.display = function () {
+    var g = group();
+    segRow(g, 'キーの表示', [['auto', '自動'], ['on', '表示'], ['off', '非表示']], PF.keys === null ? 'auto' : (PF.keys ? 'on' : 'off'), function (v) {
+      PF.keys = v === 'auto' ? null : v === 'on'; savePrefs(); applyPrefs();
+    });
+    toggleRow(g, '進行バー', 'パッド下の再生位置バー', PF.bars, function (v) { PF.bars = v; savePrefs(); applyPrefs(); });
+    segRow(g, 'パッドの高さ', [['low', '低'], ['normal', '標準'], ['tall', '高']], PF.pad, function (v) { PF.pad = v; savePrefs(); applyPrefs(); });
+    note('「キーの表示」の自動は、キーボードのある環境でだけパッドにキー名を出します。');
+  };
+  SCREENS.settings = function () {
+    var g = group();
+    var r = mk('div', 'mrow col');
+    var top = mk('div', 'mtop');
+    top.appendChild(mk('span', 'mt', '同時発音数'));
+    var out = mk('output', '', String(PF.maxv));
+    top.appendChild(out);
+    var rg = document.createElement('input');
+    rg.type = 'range'; rg.min = '4'; rg.max = '32'; rg.step = '1'; rg.value = String(PF.maxv);
+    rg.setAttribute('aria-label', '同時発音数');
+    rg.addEventListener('input', function () { PF.maxv = parseInt(rg.value, 10); out.textContent = String(PF.maxv); savePrefs(); });
+    r.appendChild(top); r.appendChild(rg);
+    g.appendChild(r);
+    note('多いほど重ねて鳴らせますが、古い端末では音が途切れることがあります。');
+    head('IPHONE / IPAD');
+    var g2 = group();
+    toggleRow(g2, '消音スイッチでも鳴らす', 'オフにすると、消音スイッチがオンの間は鳴りません。オンでは他アプリの音を止めることがあります', PF.ios, function (v) { PF.ios = v; savePrefs(); applyAudioSession(); });
+    toggleRow(g2, '画面をスリープさせない', '演奏中に画面が消えるのを防ぎます（iOS 16.4以降）', PF.wake, function (v) { PF.wake = v; savePrefs(); applyWake(); });
+    if (!isLocked()) {
+      var g3 = group();
+      row(g3, 'すべてのデータを消去', '全プロジェクトと音声を消します', function () { go('erase'); });
+    }
+  };
+  SCREENS.erase = function () {
+    if (isLocked()) { backMenu(); return; }
+    text('すべてのプロジェクトと、読み込んだ音声を消去します。元に戻せません。');
+    actions([
+      { t: '消去する', cls: 'danger', fn: function () {
+        eraseAll();
+        mStack = ['root'];
+        render();
+        mmsg('消去しました');
+      } },
+      { t: 'キャンセル', fn: backMenu }
+    ]);
+  };
+  SCREENS.admin = function () {
+    if (!PF.adm.on) {
+      text('PIN（4〜8桁の数字）を決めると、編集・Spotifyの検索・新規作成・保存・削除をロックできます。演奏と音量の操作はそのまま使えます。');
+      var p1 = input('', { pin: true, max: 8, label: 'PIN' });
+      var p2 = input('', { pin: true, max: 8, label: 'PINの確認' });
+      actions([{ t: 'ロックを有効にする', cls: 'primary', fn: function () {
+        if (!/^\d{4,8}$/.test(p1.value)) { mmsg('PINは4〜8桁の数字にしてください'); return; }
+        if (p1.value !== p2.value) { mmsg('確認用のPINが一致しません'); return; }
+        var salt = newId();
+        hashPin(p1.value, salt).then(function (h) {
+          PF.adm = { on: true, salt: salt, hash: h };
+          savePrefs();
+          adminOpen = true;
+          applyLock();
+          render();
+          mmsg('設定しました。「今すぐロック」でロックします');
+        });
+      } }]);
+      note('これは誤操作を防ぐための簡易ロックです。PINを忘れた場合は、ブラウザのサイトデータを消去するまで解除できません（プロジェクトも消えます）。');
+    } else if (!adminOpen) {
+      text('編集などがロックされています。PINを入力すると解除できます。');
+      var pi = input('', { pin: true, max: 8, label: 'PIN' });
+      actions([{ t: '解除', cls: 'primary', fn: function () {
+        hashPin(pi.value, PF.adm.salt).then(function (h) {
+          if (h === PF.adm.hash) {
+            adminOpen = true;
+            applyLock();
+            render();
+            mmsg('ロックを解除しました');
+          } else {
+            pi.value = '';
+            mmsg('PINが違います');
+          }
+        });
+      } }]);
+    } else {
+      var g = group();
+      row(g, '今すぐロック', 'メニューを閉じてロックします', function () { adminOpen = false; applyLock(); closeMenu(); setMsg('ロックしました'); }, { noChev: true });
+      row(g, 'ロック機能をやめる', 'PINを削除します', function () {
+        PF.adm = { on: false, salt: '', hash: '' };
+        savePrefs();
+        applyLock();
+        render();
+        mmsg('ロック機能をやめました');
+      }, { noChev: true });
+    }
+  };
+  SCREENS.features = function () {
+    list([
+      '音楽・効果音それぞれ 5バンク × 12パッド',
+      '再生方法：無制限（重ね再生）／ドラム／トグル／押している間だけ',
+      'ループ、再生位置、フェードイン・アウト、バランス、3バンドのイコライザ',
+      '音楽のクロスフェード、フェード停止、全停止',
+      'マスター・音楽・効果音の音量とフェード時間',
+      'Spotifyの曲・プレイリストを開くパッド（音はSpotify側で再生）',
+      '複数プロジェクトの保存・切り替え・複製',
+      'PINによる編集ロック'
+    ]);
+  };
+  SCREENS.help = function () {
+    head('基本');
+    list([
+      'パッドをタップで再生します。',
+      '「編集」をオンにしてパッドをタップすると、音声ファイルの読み込みや各種設定ができます。',
+      'マスターは100%が初期値です。全体の音量は端末本体の音量ボタンで調整してください（Webページから端末の音量は読み書きできません）。',
+      'データはこのブラウザの中に保存されます。端末を変えるときは、メニューの「ファイルに書き出す」で保存し、移す先で「ファイルから読み込む」を使ってください。'
+    ]);
+    head('キーボード');
+    list([
+      [{ k: '1' }, { k: '2' }, { k: '3' }, { k: '4' }, ' / ', { k: 'Q' }, { k: 'W' }, { k: 'E' }, { k: 'R' }, ' / ', { k: 'A' }, { k: 'S' }, { k: 'D' }, { k: 'F' }, '：音楽'],
+      [{ k: '7' }, { k: '8' }, { k: '9' }, { k: '0' }, ' / ', { k: 'U' }, { k: 'I' }, { k: 'O' }, { k: 'P' }, ' / ', { k: 'J' }, { k: 'K' }, { k: 'L' }, { k: ';' }, '：効果音'],
+      [{ k: 'Esc' }, '：全停止']
+    ]);
+    head('IPHONE / IPAD');
+    list([
+      '最初にタップした時点で音が使えるようになります。鳴らないときは、もう一度タップしてください。',
+      '消音スイッチがオンだと鳴らないことがあります。設定の「消音スイッチでも鳴らす」をオンにしてください。',
+      '長い音声ファイルはメモリを多く使います。数分以内のファイルをおすすめします。',
+      'ホーム画面に追加すると、全画面で使えます。',
+      'しばらく使わないと、iOSがブラウザのデータを消すことがあります。大事なデータは、使う前に音声を読み込み直せる状態にしておいてください。'
+    ]);
+  };
+
+  function render() {
+    var name = mStack[mStack.length - 1];
+    var st = name === lastScreen ? mBody.scrollTop : 0;
+    lastScreen = name;
+    mBody.textContent = '';
+    mmsg('');
+    $('mTitle').textContent = TITLES[name] || 'メニュー';
+    $('mBack').classList.toggle('off', mStack.length < 2);
+    SCREENS[name]();
+    mBody.scrollTop = st;
+  }
+  function go(name) { mStack.push(name); render(); }
+  function backMenu() {
+    if (mStack.length > 1) { mStack.pop(); render(); } else closeMenu();
+  }
+  function openMenu() {
+    if (editMode === false) { /* keep */ }
+    mStack = ['root'];
+    lastScreen = '';
+    $('menu').hidden = false;
+    document.body.classList.add('modal');
+    render();
+    $('sheet').focus();
+  }
+  function closeMenu() {
+    $('menu').hidden = true;
+    document.body.classList.remove('modal');
+    lastScreen = '';
+  }
+  $('menuBtn').addEventListener('click', openMenu);
+  $('mClose').addEventListener('click', closeMenu);
+  $('mBack').addEventListener('click', backMenu);
+  $('menu').addEventListener('click', function (e) { if (e.target === $('menu')) closeMenu(); });
+
+  /* ---------- Keyboard ---------- */
+  window.addEventListener('keydown', function (e) {
+    if (!$('menu').hidden) {
+      if (e.code === 'Escape') backMenu();
+      return;
+    }
+    if (!$('dlg').hidden) {
+      if (e.code === 'Escape') closeDlg();
+      return;
+    }
+    var tag = e.target && e.target.tagName;
+    if (tag === 'INPUT' && e.target.type === 'text') return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.code === 'Escape') { stopAll(0.05); cancelAssign(false); return; }
+    if (e.repeat || editMode || assigning) return;
+    for (var s = 0; s < 2; s++) {
+      var i = CODES[s].indexOf(e.code);
+      if (i >= 0) {
+        e.preventDefault();
+        press(s, i, 'k' + e.code);
+        return;
+      }
+    }
+  });
+  window.addEventListener('keyup', function (e) {
+    release('k' + e.code);
+  });
+  window.addEventListener('blur', function () {
+    Object.keys(heldBy).forEach(release);
+  });
+
+  /* ---------- Init ---------- */
+  syncMixer();
+  renderSec(0);
+  renderSec(1);
+  hydrate();
+  applyPrefs();
+  applyLock();
+})();
+</script>
+
+<script>
+/* offline support: cache the app files so it also opens without a connection */
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  });
+}
+</script>
+</body></html>
