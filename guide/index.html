@@ -46,11 +46,15 @@ img, video { display: block; max-width: 100%; }
 .facts b { display: block; color: var(--ink); font-size: 20px; font-family: var(--mono); }
 
 /* phone frame */
-.phone { width: 100%; max-width: 390px; margin: 0 auto; background: none; border: 0; padding: 0; box-shadow: none; border-radius: 0; }
-.phone > img, .phone > video { width: 100%; height: auto; border-radius: 0; background: #111; outline: 1px solid var(--edge); outline-offset: -1px; }
-.phone.wide { max-width: 844px; }
+.hero > div { min-width: 0; }
+.phone { width: 390px; max-width: 100%; overflow-x: auto; margin: 0 auto; background: none; border: 0; padding: 0; box-shadow: none; border-radius: 0; }
+.phone > img { display: block; width: 390px; max-width: none; height: auto; margin: 0 auto; border-radius: 0; background: #111; outline: 1px solid var(--edge); outline-offset: -1px; }
+.phone > video { width: 100%; height: auto; border-radius: 0; background: #111; outline: 1px solid var(--edge); outline-offset: -1px; }
+.phone.wide { width: 100%; max-width: 844px; overflow: visible; }
+.phone.wide > img { width: 100%; max-width: 844px; }
+.sc { display: none; }
 .vnote { max-width: 470px; margin: 8px auto 0; font-size: 12.5px; color: var(--muted); text-align: center; }
-.phone.vp { max-width: 470px; }
+.phone.vp { width: 100%; max-width: 470px; overflow: visible; }
 .phone.vp > video { aspect-ratio: 776 / 1688; display: block; }
 .cap { margin: 10px auto 0; max-width: 390px; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.5; }
 .phone.wide + .cap { max-width: 844px; }
@@ -101,6 +105,8 @@ footer { border-top: 1px solid var(--edge); padding: 34px 0 calc(40px + env(safe
   .sec.full { grid-template-columns: 1fr; }
 }
 @media (max-width: 520px) {
+  .phone:not(.vp):not(.wide) { width: calc(100% + 32px); max-width: none; margin-left: -16px; margin-right: -16px; }
+  .sc { display: inline; }
   .brand b { display: none; }
   .facts { grid-template-columns: 1fr; }
   .facts li { display: flex; align-items: baseline; gap: 12px; }
@@ -127,6 +133,7 @@ footer { border-top: 1px solid var(--edge); padding: 34px 0 calc(40px + env(safe
       <a href="#spotify">Spotify</a>
       <a href="#project">プロジェクト</a>
       <a href="#prefs">表示・設定</a>
+      <a href="#admin">管理者モード</a>
       <a href="#mobile">iPhone・オフライン</a>
       <a href="#keys">キー操作</a>
       <a href="#faq">Q&amp;A</a>
@@ -158,7 +165,7 @@ footer { border-top: 1px solid var(--edge); padding: 34px 0 calc(40px + env(safe
   </section>
 
   <!-- 1 -->
-  <section class="sec" id="start">
+  <section class="sec full" id="start">
     <div>
       <span class="num">01</span>
       <h2>画面の見かた</h2>
@@ -173,15 +180,7 @@ footer { border-top: 1px solid var(--edge); padding: 34px 0 calc(40px + env(safe
       <div class="tip">「バンク」は、パッドのページのようなものです。BANK 1〜5 を切り替えると、別の12個のパッドが出ます。全部で、音楽60個・効果音60個を置けます。</div>
       <h3>横向きでも使えます</h3>
       <p>スマホを横にすると、パッドが横に広く並びます。ステージで机に置いて使うときに便利です。</p>
-    </div>
-    <div class="media">
-      <div class="phone"><img src="img/home.webp" width="780" height="1688" alt="ホーム画面（上から、ヘッダー、表示窓、ミキサー、音楽、効果音）" loading="lazy"></div>
-    </div>
-  </section>
-
-  <section class="sec full">
-    <div>
-      <h3 style="margin-top:0">横画面の例</h3>
+      <h3>横画面の例</h3>
       <div class="phone wide"><img src="img/landscape.webp" width="1688" height="780" alt="横向きの画面。パッドが6列に並ぶ" loading="lazy"></div>
       <p class="cap">横向きにすると、パッドが6列で並びます。</p>
     </div>
@@ -300,11 +299,23 @@ footer { border-top: 1px solid var(--edge); padding: 34px 0 calc(40px + env(safe
         <li><b>フェード時間</b>を2秒ほどにします。</li>
         <li>鳴っている曲があるときに、別の曲のパッドをタップします。</li>
       </ol>
+      <h3>全体のイコライザー（ON/OFFつき）</h3>
+      <p>アプリ全体の音質（低音・高音など）を調整できます。使わない人のために、<b>ON/OFFのスイッチ</b>があります。OFFのときは、音は変わりません。</p>
+      <ol class="steps">
+        <li>メニューの<b>「イコライザー」</b>を開きます。</li>
+        <li>いちばん上のスイッチを<b>ON</b>にします。</li>
+        <li>縦の棒を指でなぞって調整します。63Hz・125Hz・250Hz・500Hz・1kHz・2kHz・4kHz・8kHz・16kHzの<b>9つの帯域</b>を、それぞれ−10〜+10 dBで動かせます。</li>
+        <li>迷ったときは、<b>プリセット</b>（バランス重視・低音ブースト・スムーズ・ダイナミック・クリア・高音ブースト）を押します。自分で棒を動かすと「カスタム」になります。</li>
+        <li>下の3つのスイッチで、<b>UHQアップスケーラー</b>（高音をくっきり）・<b>コンサートホール</b>（ホールのような響き）・<b>立体音響</b>（音を左右に広げる。Dolby Atmos風の広がりで、本物のDolby処理ではありません）を、それぞれON/OFFできます。</li>
+        <li>気に入った設定は、名前を入力して<b>「いまの設定を保存」</b>を押すと、<b>マイプリセット</b>に残せます（12個まで）。棒の高さと3つのスイッチが一緒に保存され、タップで呼び出せます。「削除」は2回押すと消えます。</li>
+      </ol>
+      <div class="tip">このイコライザーは、音楽と効果音の全部にかかります。パッド1つだけの音質は、パッドの設定の「イコライザ」（低域・中域・高域）で調整します。設定は、このブラウザに保存されます。</div>
       <div class="tip">スマホ全体の音量は、本体の音量ボタンで調整します。Webページからスマホの音量は読み書きできないため、マスターは100%のままにして、本体の音量で合わせるのがおすすめです。</div>
     </div>
     <div class="media">
       <div class="phone"><img src="img/home.webp" width="780" height="1688" alt="ホーム画面。上のほうがミキサー" loading="lazy"></div>
       <p class="cap">画面の上のほうが、ミキサーです。</p>
+      <div class="cols" style="margin-top:26px"><figure><div class="phone"><img src="img/menu-eq.webp" width="780" height="1688" alt="イコライザーの画面。ON/OFFのスイッチと9本の縦の棒、プリセット" loading="lazy"></div><p class="cap">メニュー → イコライザー</p></figure><figure><div class="phone"><img src="img/menu-eq2.webp" width="780" height="1688" alt="3つのエフェクトのスイッチとマイプリセット" loading="lazy"></div><p class="cap">スイッチとマイプリセット</p></figure></div>
     </div>
   </section>
 
@@ -373,11 +384,6 @@ footer { border-top: 1px solid var(--edge); padding: 34px 0 calc(40px + env(safe
       </ol>
       <p>パッドの上に<b>SPOTIFY</b>という目印が付きます。タップすると、Spotifyのアプリ（またはWeb）が開きます。</p>
       <div class="warn">Spotifyの音は、Spotify側で鳴ります。このアプリでフェード・イコライザ・ループなどをかけることはできません（Spotifyの仕組み上、できないためです）。</div>
-      <h3>アプリ版での違い</h3>
-      <ul>
-        <li><b>claude.ai版のアプリ</b>：画面の「Spotify」から曲を検索して、パッドに割り当てられます。</li>
-        <li><b>GitHub公開版</b>：検索はなく、URLを貼る方法を使います。メニューの「設定」で「ページ内のプレーヤーで開く」をオンにすると、画面の下に小さなプレーヤーが出て、ページから離れずに再生できます。</li>
-      </ul>
     </div>
     <div class="media">
       <div class="cols">
@@ -401,8 +407,9 @@ footer { border-top: 1px solid var(--edge); padding: 34px 0 calc(40px + env(safe
         <tr><td>開く</td><td>保存してあるプロジェクトの一覧から選んで、開きます。</td></tr>
         <tr><td>上書き保存</td><td>いまの状態を、いますぐ保存します。</td></tr>
         <tr><td>名前を付けて保存</td><td>音も含めて複製し、別の名前で保存します。</td></tr>
+        <tr><td>プロジェクト名の変更</td><td>今のプロジェクトの名前を変えます。パッドの設定や音声はそのままです。</td></tr>
         <tr><td>削除</td><td>選んだプロジェクトを削除します。元に戻せません。</td></tr>
-        <tr><td>ファイルに書き出す</td><td>プロジェクトを、音ごと1つのファイルにします。バックアップや、別の端末への引っ越しに使います。</td></tr>
+        <tr><td>ファイルに書き出す</td><td>プロジェクトを、音ごと1つのファイルにします。バックアップや、別の端末への引っ越しに使います。ファイル名は「プロジェクト名-play on sound」になります。</td></tr>
         <tr><td>ファイルから読み込む</td><td>書き出したファイルを、新しいプロジェクトとして開きます。</td></tr>
       </table>
       <div class="tip">データは、お使いのブラウザの中に保存されます。端末を変えるときや、ブラウザのデータを消すときは、先に「ファイルに書き出す」で保存してください。</div>
@@ -444,22 +451,66 @@ footer { border-top: 1px solid var(--edge); padding: 34px 0 calc(40px + env(safe
         <li><b>すべてのデータを消去</b>：全プロジェクトと音声を消します。元に戻せません。</li>
       </ul>
       <h3>管理者モード（編集のロック）</h3>
-      <p>4〜8桁のPINを決めて、ロックを有効にできます。ロック中は、編集・Spotify検索・新規作成・保存・削除ができません。演奏と音量の操作は、そのまま使えます。他の人にステージ操作を任せるときに便利です。</p>
-      <div class="warn">誤操作を防ぐための簡易ロックです。PINを忘れると、ブラウザのサイトデータを消すまで解除できません（プロジェクトも消えます）。忘れないよう、必ず控えておいてください。</div>
+      <p>PINで編集をロックできます。PINを忘れたときの解除方法も、いくつか用意されています。くわしくは、<a href="#admin">次の「管理者モード」</a>をご覧ください。</p>
     </div>
     <div class="media">
       <div class="cols">
         <figure><div class="phone"><img src="img/menu-display.webp" width="780" height="1688" alt="表示の設定画面" loading="lazy"></div><p class="cap">表示</p></figure>
         <figure><div class="phone"><img src="img/menu-settings.webp" width="780" height="1688" alt="設定画面" loading="lazy"></div><p class="cap">設定</p></figure>
       </div>
-      <div class="cols" style="margin-top:26px"><figure><div class="phone"><img src="img/menu-admin.webp" width="780" height="1688" alt="管理者モードの画面" loading="lazy"></div><p class="cap">管理者モード</p></figure></div>
+      <div class="cols" style="margin-top:26px"><figure><div class="phone"><img src="img/menu-admin.webp" width="780" height="1688" alt="管理者モードの設定画面" loading="lazy"></div><p class="cap">管理者モード（最初の設定）</p></figure></div>
     </div>
   </section>
 
   <!-- 11 -->
-  <section class="sec full" id="mobile">
+  <section class="sec" id="admin">
     <div>
       <span class="num">11</span>
+      <h2>管理者モードとPINを忘れたとき</h2>
+      <p class="lead">PINを決めると、編集などをロックできます。他の人にステージ操作をまかせるときや、本番中の操作ミスを防ぎたいときに使います。</p>
+      <h3>ロックをかける</h3>
+      <ol class="steps">
+        <li>メニューの<b>「管理者モード」</b>を開きます。</li>
+        <li>4〜8桁の<b>PIN</b>を入力します。確認のため、同じものをもう一度入力します。</li>
+        <li><b>「PINを忘れた場合の救済方法」</b>で、必要なものを設定します（任意）。画面が長いので、下へスクロールしてください。</li>
+        <li><b>「ロックを有効にする」</b>を押します。</li>
+        <li>画面に<b>復旧コード</b>が出ます。必ず書き留めて、「メモしました」を押します。</li>
+        <li>メニューの<b>「今すぐロック」</b>でロックされます。</li>
+      </ol>
+      <p><b>ロック中にできないこと：</b>編集、Spotifyの検索、新規作成、名前を付けて保存、プロジェクト名の変更、削除、ファイルからの読み込み。<br><b>ロック中でもできること：</b>演奏、音量の操作、プロジェクトを開く、ファイルへの書き出し。</p>
+      <h3>解除する</h3>
+      <p>メニューの「管理者モード」でPINを入力して、「解除」を押します。</p>
+      <h3>PINを忘れたとき</h3>
+      <p>ロック中の「管理者モード」の画面で<b>「PINを忘れた場合」</b>を押します。設定してある方法が並ぶので、どれか1つで解除できます。プロジェクトは消えません。</p>
+      <div class="tscroll"><table>
+        <tr><th>方法</th><th>やり方</th><th>注意</th></tr>
+        <tr><td>秘密の質問</td><td>質問を選んで（または自分で書いて）答えを決めておきます。答えると解除されます。ひらがな・カタカナ、大文字・小文字、空白の違いは区別しません。</td><td>5回間違えると10分間答えられません</td></tr>
+        <tr><td>パスワード</td><td>4〜32文字のパスワードを決めます。設定のときは、確認のため2回入力します。</td><td>5回間違えると10分間答えられません</td></tr>
+        <tr><td>パターン</td><td>3×3の点を、4点以上なぞって決めます。確認のため2回入力します。指でなぞっても、順にタップしてもOKです。</td><td>5回間違えると10分間答えられません</td></tr>
+        <tr><td>生体認証</td><td>端末の指紋・顔認証（または画面ロック）で本人確認をして解除します。</td><td>HTTPSで開いたページと、対応した端末が必要です。登録した端末とブラウザでしか使えません。claude.ai上のアプリでは使えません</td></tr>
+        <tr><td>復旧コード</td><td>PINを設定したときに一度だけ表示される「XXXXX-XXXXX」の形式のコードです。入力すると解除されます。</td><td>紙などに書き留めてください。再表示はできませんが、ロックを解除した状態なら新しく発行できます</td></tr>
+        <tr><td>24時間待つ</td><td>どの方法も使えないときの最後の手段です。「解除を申請する」を押して、24時間後に解除できます。</td><td>申請中にPINを思い出して入力すると、申請は自動で取り消されます</td></tr>
+      </table></div>
+      <p>解除したあとは、必要なら新しいPINを設定してください。</p>
+      <h3>あとから救済方法を設定・変更する</h3>
+      <p>ロックを解除した状態で、メニューの「管理者モード」を開きます。「秘密の質問」「パスワード」「パターン」「生体認証」「復旧コードを新しく発行」から、設定・変更・削除ができます。</p>
+      <div class="warn">この管理者モードは、ブラウザの中だけで動く簡易ロックです。誤操作を防ぐためのもので、他の人から強く守る仕組みではありません。PINは誕生日などの推測されやすい番号を避け、秘密の質問の答えも、他の人が知らないものにしてください。</div>
+    </div>
+    <div class="media">
+      <div class="cols">
+        <figure><div class="phone"><img src="img/admin-setup.webp" width="780" height="1688" alt="管理者モードの最初の設定画面" loading="lazy"></div><p class="cap">PIN（確認用にもう一度入力）</p></figure>
+        <figure><div class="phone"><img src="img/admin-setup-pw.webp" width="780" height="1688" alt="パスワードの設定欄" loading="lazy"></div><p class="cap">パスワード</p></figure>
+        <figure><div class="phone"><img src="img/admin-setup-pat.webp" width="780" height="1688" alt="3×3のパターンの設定欄" loading="lazy"></div><p class="cap">3×3のパターン</p></figure>
+        <figure><div class="phone"><img src="img/admin-code.webp" width="780" height="1688" alt="復旧コードの表示" loading="lazy"></div><p class="cap">復旧コードは一度だけ表示</p></figure>
+        <figure><div class="phone"><img src="img/admin-unlocked.webp" width="780" height="1688" alt="解除中の管理者モード" loading="lazy"></div><p class="cap">解除中の画面</p></figure>
+        <figure><div class="phone"><img src="img/admin-forgot.webp" width="780" height="1688" alt="PINを忘れた場合の画面" loading="lazy"></div><p class="cap">PINを忘れた場合</p></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec full" id="mobile">
+    <div>
+      <span class="num">12</span>
       <h2>iPhone・オフラインで使うコツ</h2>
       <ol class="steps">
         <li><b>最初のタップで音が使えるようになります。</b>鳴らないときは、もう一度タップしてください。</li>
@@ -475,7 +526,7 @@ footer { border-top: 1px solid var(--edge); padding: 34px 0 calc(40px + env(safe
   <!-- 12 -->
   <section class="sec full" id="keys">
     <div>
-      <span class="num">12</span>
+      <span class="num">13</span>
       <h2>キーボードで操作する</h2>
       <p class="lead">パソコンでは、キーボードでもパッドを鳴らせます。表示中のバンクの12個のパッドが、キーに割り当てられています。</p>
       <div class="tscroll"><table>
@@ -490,8 +541,9 @@ footer { border-top: 1px solid var(--edge); padding: 34px 0 calc(40px + env(safe
   <!-- FAQ -->
   <section class="sec full" id="faq">
     <div>
-      <span class="num">13</span>
+      <span class="num">14</span>
       <h2>よくある質問</h2>
+      <details><summary>PINを忘れました</summary><p>ロック中の「管理者モード」の画面で「PINを忘れた場合」を押してください。秘密の質問・パスワード・パターン・生体認証・復旧コードのうち、設定してあるものが使えます。どれもないときは、24時間待つ方法で解除できます。プロジェクトは消えません。くわしくは<a href="#admin">管理者モード</a>をご覧ください。</p></details>
       <details><summary>音が鳴りません</summary><p>最初に画面を1回タップして、もう一度パッドを押してください。それでも鳴らないときは、「音 OFF」になっていないか、マスターや音量のスライダーが0になっていないか、端末の音量が下がっていないかを確認してください。iPhoneは、消音スイッチと、設定の「消音スイッチでも鳴らす」も確認してください。</p></details>
       <details><summary>ブラウザを閉じたら、パッドの中身は消えますか？</summary><p>消えません。自動で保存されていて、次に開いたときも残っています。ただし、プライベートブラウズの場合や、ブラウザのデータを消した場合は消えます。</p></details>
       <details><summary>他のスマホやパソコンでも同じパッドを使いたい</summary><p>メニューの「ファイルに書き出す」でファイルを作り、別の端末で「ファイルから読み込む」を使ってください。音も一緒に移せます。</p></details>
@@ -523,7 +575,7 @@ footer { border-top: 1px solid var(--edge); padding: 34px 0 calc(40px + env(safe
   } catch (e) { /* ignore */ }
 
   /* highlight the current section in the top bar */
-  var ids = ['start', 'assign', 'play', 'modes', 'mixer', 'lock', 'pad', 'spotify', 'project', 'prefs', 'mobile', 'keys', 'faq'];
+  var ids = ['start', 'assign', 'play', 'modes', 'mixer', 'lock', 'pad', 'spotify', 'project', 'prefs', 'admin', 'mobile', 'keys', 'faq'];
   var links = {};
   ids.forEach(function (id) { links[id] = document.querySelector('#toc a[href="#' + id + '"]'); });
   function setCur(id) {

@@ -647,6 +647,7 @@ a.mrow { text-decoration: none; }
     if (j) list.forEach(function (x) { if (x.id === j.cur) cur = x.id; });
     return { cur: cur, list: list };
   }
+  function eqVals(a) { return [0, 1, 2, 3, 4, 5, 6, 7, 8].map(function (k) { return Array.isArray(a) && a.length === 9 ? num(a[k], -10, 10, 0) : 0; }); }
   function loadPrefs() {
     var o = null;
     try { o = JSON.parse(lsGet(LSP)); } catch (e) { o = null; }
@@ -657,10 +658,17 @@ a.mrow { text-decoration: none; }
       bars: o.bars !== false,
       pad: ['low', 'normal', 'tall'].indexOf(o.pad) >= 0 ? o.pad : 'normal',
       wake: !!o.wake,
+      eq: {
+        on: !!(o.eq && o.eq.on), uhq: !!(o.eq && o.eq.uhq), hall: !!(o.eq && o.eq.hall), spat: !!(o.eq && o.eq.spat),
+        g: eqVals(o.eq && o.eq.g),
+        user: (o.eq && Array.isArray(o.eq.user) ? o.eq.user : []).slice(0, 12).filter(function (u) { return u && typeof u.n === 'string' && u.n; }).map(function (u) {
+          return { n: String(u.n).slice(0, 30), g: eqVals(u.g), uhq: !!u.uhq, hall: !!u.hall, spat: !!u.spat };
+        })
+      },
       embed: o.embed === undefined ? !(window.claude && window.claude.use) : !!o.embed, /* claude.ai blocks embeds, so it starts off there */
       ios: o.ios !== false,
       maxv: num(o.maxv, 4, 32, 20) | 0,
-      adm: { on: !!(a.on && a.hash), salt: String(a.salt || ''), hash: String(a.hash || '') }
+      adm: { on: !!(a.on && a.hash), salt: String(a.salt || ''), hash: String(a.hash || ''), rsalt: String(a.rsalt || ''), rhash: String(a.rhash || ''), wait: num(a.wait, 0, 9e15, 0), qtext: String(a.qtext || '').slice(0, 60), qsalt: String(a.qsalt || ''), qhash: String(a.qhash || ''), qlock: num(a.qlock, 0, 9e15, 0), qfail: num(a.qfail, 0, 99, 0), psalt: String(a.psalt || ''), phash: String(a.phash || ''), patsalt: String(a.patsalt || ''), pathash: String(a.pathash || ''), cred: String(a.cred || '').slice(0, 1400) }
     };
   }
   var PF = loadPrefs();
@@ -744,7 +752,20 @@ a.mrow { text-decoration: none; }
   function idbClear() { return idb('readwrite', function (s) { return s.clear(); }); }
 
   /* ---------- Audio engine ---------- */
-  var ctx = null, master = null, secGain = [];
+  var ctx = null, master = null, secGain = [], eqN = [], fxUhq = null, fxHall = null, fxSide = [];
+  var EQB = [['lowshelf', 63], ['peaking', 125], ['peaking', 250], ['peaking', 500], ['peaking', 1000], ['peaking', 2000], ['peaking', 4000], ['peaking', 8000], ['highshelf', 16000]];
+  function applyEq() {
+    if (!ctx || !eqN.length) return;
+    var t = ctx.currentTime;
+    eqN.forEach(function (n, k) {
+      var v = PF.eq.on ? PF.eq.g[k] : 0;
+      try { n.gain.setTargetAtTime(v, t, 0.02); } catch (e) { n.gain.value = v; }
+    });
+    function fx(node, v) { if (!node) return; try { node.gain.setTargetAtTime(v, t, 0.03); } catch (e) { node.gain.value = v; } }
+    fx(fxUhq, PF.eq.on && PF.eq.uhq ? 0.45 : 0);
+    fx(fxHall, PF.eq.on && PF.eq.hall ? 0.32 : 0);
+    fxSide.forEach(function (n, q) { fx(n, PF.eq.on && PF.eq.spat ? (q < 2 ? 0.7 : -0.7) : 0); });
+  }
   var voices = [];
   var heldBy = {};
 
@@ -760,12 +781,44 @@ a.mrow { text-decoration: none; }
       ctx = new AC();
       master = ctx.createGain();
       var comp = ctx.createDynamicsCompressor();
-      master.connect(comp);
+      var prev = master;
+      eqN = EQB.map(function (b) {
+        var n = ctx.createBiquadFilter(); n.type = b[0]; n.frequency.value = b[1]; if (b[0] === 'peaking') n.Q.value = 1.4; n.gain.value = 0;
+        prev.connect(n); prev = n; return n;
+      });
+      /* extra effects after the EQ: dry + exciter (UHQ) + hall reverb + stereo widening */
+      var fxIn = ctx.createGain(); fxIn.channelCount = 2; fxIn.channelCountMode = 'explicit'; fxIn.channelInterpretation = 'speakers';
+      var fxOut = ctx.createGain();
+      prev.connect(fxIn); fxIn.connect(fxOut);
+      var hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 5000;
+      var sh = ctx.createWaveShaper(), cv = new Float32Array(1024);
+      for (var qi = 0; qi < 1024; qi++) { cv[qi] = Math.tanh((qi / 512 - 1) * 4); }
+      sh.curve = cv;
+      var hp2 = ctx.createBiquadFilter(); hp2.type = 'highpass'; hp2.frequency.value = 7000;
+      fxUhq = ctx.createGain(); fxUhq.gain.value = 0;
+      fxIn.connect(hp); hp.connect(sh); sh.connect(hp2); hp2.connect(fxUhq); fxUhq.connect(fxOut);
+      var conv = ctx.createConvolver(), len = Math.floor(ctx.sampleRate * 2.2), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (var ch = 0; ch < 2; ch++) { var d = ir.getChannelData(ch); for (var qj = 0; qj < len; qj++) d[qj] = (Math.random() * 2 - 1) * Math.pow(1 - qj / len, 3.2); }
+      conv.buffer = ir;
+      fxHall = ctx.createGain(); fxHall.gain.value = 0;
+      fxIn.connect(conv); conv.connect(fxHall); fxHall.connect(fxOut);
+      var spl = ctx.createChannelSplitter(2), mrg = ctx.createChannelMerger(2);
+      fxIn.connect(spl);
+      var gLL = ctx.createGain(), gRL = ctx.createGain(), gRR = ctx.createGain(), gLR = ctx.createGain();
+      [gLL, gRL, gRR, gLR].forEach(function (n) { n.gain.value = 0; });
+      spl.connect(gLL, 0); gLL.connect(mrg, 0, 0);
+      spl.connect(gRL, 1); gRL.connect(mrg, 0, 0);
+      spl.connect(gRR, 1); gRR.connect(mrg, 0, 1);
+      spl.connect(gLR, 0); gLR.connect(mrg, 0, 1);
+      mrg.connect(fxOut);
+      fxSide = [gLL, gRR, gRL, gLR];
+      fxOut.connect(comp);
       comp.connect(ctx.destination);
       secGain = [ctx.createGain(), ctx.createGain()];
       secGain[0].connect(master);
       secGain[1].connect(master);
       applyGain();
+      applyEq();
     }
     if (ctx.state !== 'running') {
       try { var rp = ctx.resume(); if (rp && rp.catch) rp.catch(function () {}); } catch (e) { /* ignore */ }
@@ -1382,6 +1435,7 @@ a.mrow { text-decoration: none; }
     });
   }
 
+
   $('dPrev').addEventListener('click', function () {
     var d = draft;
     if (!d) return;
@@ -1777,7 +1831,7 @@ a.mrow { text-decoration: none; }
       });
       parts.push('}}');
       var blob = new Blob(parts, { type: 'application/json' });
-      var fname = (nm.replace(/[\\/:*?"<>|]/g, '_') || 'project') + '.json';
+      var fname = (nm.replace(/[\\/:*?"<>|]/g, '_').trim() || 'project') + '-play on sound.json';
       var dlp = window.claude && typeof window.claude.use === 'function'
         ? window.claude.use('downloads').catch(function () { return null; })
         : Promise.resolve(null);
@@ -1970,7 +2024,7 @@ a.mrow { text-decoration: none; }
     return d;
   }
 
-  var TITLES = { root: 'メニュー', 'new': '新規作成', open: '開く', saveas: '名前を付けて保存', del: '削除', delc: '削除の確認', display: '表示', settings: '設定', erase: 'データの消去', admin: '管理者モード', features: '機能', help: 'Web説明' };
+  var TITLES = { root: 'メニュー', 'new': '新規作成', open: '開く', saveas: '名前を付けて保存', rename: 'プロジェクト名の変更', del: '削除', delc: '削除の確認', display: '表示', settings: '設定', eq: 'イコライザー', erase: 'データの消去', admin: '管理者モード', adminq: '秘密の質問', adminpw: 'パスワード', adminpat: 'パターン', adminbio: '生体認証', adminfg: 'PINを忘れた場合', features: '機能', help: 'Web説明' };
   var SCREENS = {};
 
   SCREENS.root = function () {
@@ -1982,6 +2036,7 @@ a.mrow { text-decoration: none; }
       mmsg(saveNow() ? '「' + curName() + '」を保存しました' : '保存できませんでした（ブラウザの保存領域がいっぱいかもしれません）');
     }, { noChev: true });
     row(g, '名前を付けて保存', '音声も含めて複製します', function () { go('saveas'); }, { disabled: lk });
+    row(g, 'プロジェクト名の変更', '今の名前：' + curName(), function () { go('rename'); }, { disabled: lk });
     row(g, '削除', 'プロジェクトを削除', function () { go('del'); }, { disabled: lk });
     var gf = group();
     row(gf, 'ファイルに書き出す', 'バックアップ。他の端末へ移せます', function () {
@@ -1994,6 +2049,7 @@ a.mrow { text-decoration: none; }
     row(gf, 'ファイルから読み込む', '書き出したファイルを新しいプロジェクトとして開く', pickFile, { noChev: true, disabled: lk });
     var g2 = group();
     row(g2, '表示', 'キー表示・進行バー・パッドの高さ', function () { go('display'); });
+    row(g2, 'イコライザー', PF.eq.on ? 'ON' : 'OFF（全体の音質を調整）', function () { go('eq'); });
     row(g2, '設定', '同時発音数・iPhone向け設定', function () { go('settings'); });
     row(g2, '管理者モード', PF.adm.on ? (lk ? 'ロック中' : 'ロック機能オン（解除中）') : 'PINで編集をロック', function () { go('admin'); });
     linkRow(g2, '機能', '画像と動画つきの使い方ガイドを開く', guideUrl());
@@ -2036,6 +2092,26 @@ a.mrow { text-decoration: none; }
       });
     } }]);
   };
+  SCREENS.rename = function () {
+    text('今のプロジェクトの名前を変えます。パッドの設定や音声はそのままです。（30文字まで）');
+    var i = input(curName(), { max: 30, label: '新しい名前' });
+    actions([{ t: '変更する', cls: 'primary', fn: function () {
+      var nm = cleanName(i.value, ''), k, cur = null;
+      if (!nm) { mmsg('名前を入力してください'); return; }
+      for (k = 0; k < IDX.list.length; k++) {
+        if (IDX.list[k].id === S.id) cur = IDX.list[k];
+        else if (IDX.list[k].name === nm) { mmsg('同じ名前のプロジェクトがあります'); return; }
+      }
+      if (!cur) { mmsg('変更できませんでした'); return; }
+      if (cur.name === nm) { mmsg('名前は変わっていません'); return; }
+      cur.name = nm;
+      if (!saveIndex()) { mmsg('変更できませんでした（ブラウザの保存領域がいっぱいかもしれません）'); return; }
+      updateName();
+      mStack = ['root'];
+      render();
+      mmsg('「' + nm + '」に変更しました');
+    } }]);
+  };
   SCREENS.del = function () {
     var g = group();
     IDX.list.forEach(function (x) {
@@ -2066,6 +2142,108 @@ a.mrow { text-decoration: none; }
     toggleRow(g, '進行バー', 'パッド下の再生位置バー', PF.bars, function (v) { PF.bars = v; savePrefs(); applyPrefs(); });
     segRow(g, 'パッドの高さ', [['low', '低'], ['normal', '標準'], ['tall', '高']], PF.pad, function (v) { PF.pad = v; savePrefs(); applyPrefs(); });
     note('「キーの表示」の自動は、キーボードのある環境でだけパッドにキー名を出します。');
+  };
+  var EQL = ['63', '125', '250', '500', '1k', '2k', '4k', '8k', '16k'];
+  var EQP = [['バランス重視', [0, 0, 0, 0, 0, 0, 0, 0, 0]], ['低音ブースト', [0, 0, 5, 4, 0, -1, -1, -1, -1]], ['スムーズ', [0, 0, 2, 1, -1, -2, -2, -3, -5]], ['ダイナミック', [0, 0, 4, 3, 1, -1, 2, 3, 0]], ['クリア', [0, 0, -1, 0, 1, 4, 2, 0, 2]], ['高音ブースト', [0, 0, -2, 0, 1, 0, 1, 4, 5]]];
+  function eqCurName() {
+    for (var q = 0; q < EQP.length; q++) if (EQP[q][1].join() === PF.eq.g.join()) return EQP[q][0];
+    for (var q2 = 0; q2 < PF.eq.user.length; q2++) if (PF.eq.user[q2].g.join() === PF.eq.g.join()) return PF.eq.user[q2].n;
+    return 'カスタム';
+  }
+  function eqChart(dim) {
+    var H = 200, wrap = mk('div', ''), vals = [], bars = [];
+    wrap.style.cssText = 'padding:14px 10px 12px;border-radius:14px;background:linear-gradient(135deg,#5b5b5b,#767676);' + (dim ? 'opacity:.5;' : '');
+    var area = mk('div', ''); area.style.cssText = 'display:flex;gap:0;align-items:stretch';
+    var axis = mk('div', ''); axis.style.cssText = 'position:relative;width:38px;height:' + H + 'px;flex:none;font:14px sans-serif;color:#111';
+    [['10dB', 0], ['0dB', 50], ['-10dB', 100]].forEach(function (a) {
+      var l = mk('span', '', a[0]); l.style.cssText = 'position:absolute;right:6px;transform:translateY(-50%);top:' + a[1] + '%;white-space:nowrap';
+      axis.appendChild(l);
+    });
+    var plot = mk('div', ''); plot.style.cssText = 'position:relative;flex:1;display:flex;height:' + H + 'px;background-image:repeating-linear-gradient(to bottom,rgba(0,0,0,.45) 0,rgba(0,0,0,.45) 1px,transparent 1px,transparent 10%);';
+    plot.style.borderTop = '1px solid rgba(0,0,0,.6)'; plot.style.borderBottom = '1px solid rgba(0,0,0,.6)'; plot.style.boxSizing = 'content-box';
+    var zero = mk('div', ''); zero.style.cssText = 'position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.7);pointer-events:none';
+    plot.appendChild(zero);
+    var labels = mk('div', ''); labels.style.cssText = 'display:flex;margin-left:38px;padding-top:10px;font:14px sans-serif;color:#111';
+    var nums = mk('div', ''); nums.style.cssText = 'display:flex;margin-left:38px;padding-top:2px;font:10px var(--mono);color:var(--accent)';
+    function paint(k) {
+      var v = PF.eq.g[k];
+      bars[k].style.height = ((v + 10) / 20 * 100) + '%';
+      vals[k].textContent = (v > 0 ? '+' : '') + v;
+    }
+    function setFrom(k, col, e) {
+      var r = col.getBoundingClientRect();
+      var v = Math.round(10 - 20 * (e.clientY - r.top) / r.height);
+      v = Math.max(-10, Math.min(10, v));
+      if (v !== PF.eq.g[k]) { PF.eq.g[k] = v; paint(k); col.setAttribute('aria-valuenow', String(v)); savePrefs(); applyEq(); }
+    }
+    EQL.forEach(function (name, k) {
+      var col = mk('div', ''); col.style.cssText = 'position:relative;flex:1;height:100%;touch-action:none;cursor:pointer;-webkit-user-select:none;user-select:none';
+      col.tabIndex = 0; col.setAttribute('role', 'slider'); col.setAttribute('aria-label', name + 'Hz'); col.setAttribute('aria-valuemin', '-10'); col.setAttribute('aria-valuemax', '10'); col.setAttribute('aria-valuenow', String(PF.eq.g[k]));
+      var tr = mk('div', ''); tr.style.cssText = 'position:absolute;left:50%;width:8px;margin-left:-4px;top:0;bottom:0;background:rgba(0,0,0,.22);border-radius:4px';
+      var fl = mk('div', ''); fl.style.cssText = 'position:absolute;left:50%;width:8px;margin-left:-4px;bottom:0;background:#eee;border-radius:4px';
+      bars.push(fl); col.appendChild(tr); col.appendChild(fl); plot.appendChild(col);
+      col.addEventListener('pointerdown', function (e) { try { col.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ } setFrom(k, col, e); });
+      col.addEventListener('pointermove', function (e) { if (e.buttons & 1 || e.pointerType === 'touch') setFrom(k, col, e); });
+      col.addEventListener('keydown', function (e) {
+        var d = e.key === 'ArrowUp' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowDown' || e.key === 'ArrowLeft' ? -1 : 0;
+        if (!d) return;
+        e.preventDefault();
+        var v = Math.max(-10, Math.min(10, PF.eq.g[k] + d));
+        PF.eq.g[k] = v; paint(k); col.setAttribute('aria-valuenow', String(v)); savePrefs(); applyEq();
+      });
+      var lb = mk('span', '', name); lb.style.cssText = 'flex:1;text-align:center'; labels.appendChild(lb);
+      var nv = mk('span', ''); nv.style.cssText = 'flex:1;text-align:center'; vals.push(nv); nums.appendChild(nv);
+    });
+    area.appendChild(axis); area.appendChild(plot);
+    wrap.appendChild(area); wrap.appendChild(labels);
+    EQL.forEach(function (n, k) { paint(k); });
+    return wrap;
+  }
+  SCREENS.eq = function () {
+    var g0 = group();
+    toggleRow(g0, 'イコライザー', '全体の音質を調整します。使わないときはOFFのままで大丈夫です', PF.eq.on, function (v) { PF.eq.on = v; savePrefs(); applyEq(); });
+    if (!PF.eq.on) note('いまはOFFです。ONにすると、下の設定が全体の音に反映されます。');
+    var g = group();
+    g.appendChild(eqChart(!PF.eq.on));
+    note('縦の棒を、指でなぞって上下に動かします（−10〜+10 dB）。下に並ぶ数字は、63Hz〜16kHzの9つの帯域です。');
+    head('プリセット（いま：' + eqCurName() + '）');
+    actions(EQP.map(function (p) {
+      return { t: p[0], fn: function () { PF.eq.g = p[1].slice(); savePrefs(); applyEq(); render(); mmsg('「' + p[0] + '」にしました'); } };
+    }));
+    note('棒を動かして自分で調整すると「カスタム」になります。');
+    var gf = group();
+    toggleRow(gf, 'UHQアップスケーラー', '高音の細かい響きを足して、音をくっきりさせます', PF.eq.uhq, function (v) { PF.eq.uhq = v; savePrefs(); applyEq(); });
+    toggleRow(gf, 'コンサートホール', 'ホールにいるような広がりと響きを足します', PF.eq.hall, function (v) { PF.eq.hall = v; savePrefs(); applyEq(); });
+    toggleRow(gf, '立体音響', '音を左右に広げます（Dolby Atmos風の広がり。本物のDolby処理ではありません）', PF.eq.spat, function (v) { PF.eq.spat = v; savePrefs(); applyEq(); });
+    head('マイプリセット');
+    if (!PF.eq.user.length) note('まだありません。下で名前をつけて、いまの設定（棒の高さと3つのスイッチ）を保存できます。');
+    var gu = group();
+    PF.eq.user.forEach(function (u, ui) {
+      var r = row(gu, u.n, 'タップで適用', function () {
+        PF.eq.g = u.g.slice(); PF.eq.uhq = u.uhq; PF.eq.hall = u.hall; PF.eq.spat = u.spat;
+        savePrefs(); applyEq(); render(); mmsg('「' + u.n + '」にしました');
+      }, { noChev: true });
+      var del = mk('span', 'pill', '削除'); del.setAttribute('role', 'button');
+      del.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (del.dataset.arm !== '1') { del.dataset.arm = '1'; del.textContent = 'もう一度で削除'; return; }
+        PF.eq.user.splice(ui, 1); savePrefs(); render(); mmsg('「' + u.n + '」を削除しました');
+      });
+      r.appendChild(del);
+    });
+    var nmIn = input('', { label: 'プリセット名', max: 20 });
+    nmIn.placeholder = 'プリセットの名前';
+    actions([{ t: 'いまの設定を保存', fn: function () {
+      var nm = cleanName(nmIn.value, '');
+      if (!nm) { mmsg('名前を入力してください'); return; }
+      var item = { n: nm, g: PF.eq.g.slice(), uhq: PF.eq.uhq, hall: PF.eq.hall, spat: PF.eq.spat };
+      var at = -1; PF.eq.user.forEach(function (u, q) { if (u.n === nm) at = q; });
+      if (at >= 0) PF.eq.user[at] = item;
+      else if (PF.eq.user.length >= 12) { mmsg('保存できるのは12個までです。いらないものを削除してください'); return; }
+      else PF.eq.user.push(item);
+      savePrefs(); render(); mmsg('「' + nm + '」を保存しました');
+    } }]);
+    note('イコライザーは、アプリ全体（音楽・効果音の全部）にかかります。パッドごとの音質は、パッドの設定の「イコライザ」で調整できます。');
   };
   SCREENS.settings = function () {
     var g = group();
@@ -2110,25 +2288,330 @@ a.mrow { text-decoration: none; }
       { t: 'キャンセル', fn: backMenu }
     ]);
   };
+  var QPRESETS = ['子どものころのあだ名は？', '最初に飼ったペットの名前は？', '卒業した小学校の名前は？', '好きな食べ物は？', '初めて買ったゲームやCDは？', '生まれた町の名前は？'];
+  function normAns(a) {
+    var t = String(a || '');
+    try { t = t.normalize('NFKC'); } catch (e) { /* ignore */ }
+    t = t.toLowerCase().replace(/\s+/g, '').replace(/[\u30a1-\u30f6]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0x60); });
+    return t;
+  }
+  function qaBlock() {
+    var sel = document.createElement('select');
+    sel.className = 'minput';
+    sel.setAttribute('aria-label', '秘密の質問');
+    QPRESETS.concat(['その他（自分で書く）']).forEach(function (q, i) {
+      var o = document.createElement('option'); o.value = String(i); o.textContent = q; sel.appendChild(o);
+    });
+    mBody.appendChild(sel);
+    var cq = input('', { max: 40, label: '自分で決めた質問' });
+    cq.placeholder = '質問を書いてください';
+    cq.style.display = 'none';
+    sel.addEventListener('change', function () { cq.style.display = sel.value === String(QPRESETS.length) ? '' : 'none'; });
+    var ans = input('', { max: 40, label: '答え' });
+    ans.placeholder = '答え';
+    return {
+      q: function () { return sel.value === String(QPRESETS.length) ? cq.value.trim() : QPRESETS[+sel.value]; },
+      a: function () { return ans.value; },
+      clear: function () { ans.value = ''; }
+    };
+  }
+  function saveQA(q, a) {
+    var salt = newId();
+    return hashPin(normAns(a), salt).then(function (h) {
+      PF.adm.qtext = q.slice(0, 60); PF.adm.qsalt = salt; PF.adm.qhash = h; PF.adm.qlock = 0;
+      savePrefs();
+    });
+  }
+  var freshCode = '';
+  function makeCode() {
+    var A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', s = '', r = new Uint8Array(10), i;
+    try { crypto.getRandomValues(r); } catch (e) { for (i = 0; i < 10; i++) r[i] = Math.floor(Math.random() * 256); }
+    for (i = 0; i < 10; i++) { s += A.charAt(r[i] % A.length); if (i === 4) s += '-'; }
+    return s;
+  }
+  function normCode(c) { return String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+  function issueCode() {
+    var code = makeCode(), salt = newId();
+    return hashPin(normCode(code), salt).then(function (h) {
+      PF.adm.rsalt = salt; PF.adm.rhash = h; PF.adm.wait = 0;
+      savePrefs();
+      freshCode = code;
+    });
+  }
+  function lockOff() {
+    PF.adm = { on: false, salt: '', hash: '', rsalt: '', rhash: '', wait: 0, qtext: '', qsalt: '', qhash: '', qlock: 0, qfail: 0, psalt: '', phash: '', patsalt: '', pathash: '', cred: '' };
+    savePrefs();
+    adminOpen = false;
+    applyLock();
+  }
+  function fmtDate(t) {
+    var d = new Date(t), p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + p(d.getMinutes());
+  }
+  SCREENS.adminq = function () {
+    if (!PF.adm.on || !adminOpen) { backMenu(); return; }
+    text(PF.adm.qhash ? '現在の質問：' + PF.adm.qtext : '質問と答えを決めておくと、PINを忘れたときに答えるだけでロックを解除できます。答えは、他の人に推測されにくいものにしてください。');
+    var qb = qaBlock();
+    actions([{ t: '保存', cls: 'primary', fn: function () {
+      if (!qb.q()) { mmsg('質問を入力してください'); return; }
+      if (!qb.a().trim()) { mmsg('答えを入力してください'); return; }
+      saveQA(qb.q(), qb.a()).then(function () { qb.clear(); render(); mmsg('秘密の質問を保存しました'); });
+    } }].concat(PF.adm.qhash ? [{ t: '質問を削除', fn: function () {
+      PF.adm.qtext = ''; PF.adm.qsalt = ''; PF.adm.qhash = ''; savePrefs(); render(); mmsg('削除しました');
+    } }] : []));
+    note('答えは、ひらがな・カタカナ・大文字小文字・空白の違いを区別せずに照合します。');
+    note(NOTE_Q);
+  };
+  var NOTE_PIN = 'PINは、このブラウザの中だけで照合する簡易ロックです。誤操作を防ぐためのもので、他の人から強く守る仕組みではありません。数字だけなので、誕生日など推測されやすい番号は避けてください。';
+  var NOTE_Q = '秘密の質問も簡易的な仕組みです。答えが他の人に推測されやすいと、PINを知らなくてもロックを解除されてしまいます。他の人が知らない答えを選んでください。';
+  var NOTE_PW = 'パスワードも、このブラウザの中だけで照合する簡易的な仕組みです。他のサービスと同じものは使わないでください。';
+  var NOTE_PAT = 'パターンは9つの点の組み合わせなので、推測されやすく、横から見られると分かってしまいます。人目のない所で使ってください。';
+  var NOTE_BIO = '生体認証は、この端末の指紋・顔認証（または画面ロック）で本人確認をします。HTTPSで開いたページと、対応した端末が必要です。登録した端末とブラウザでしか使えません。';
+  function guessBlocked() {
+    if (PF.adm.qlock > Date.now()) { mmsg('間違いが続いたため、' + fmtDate(PF.adm.qlock) + ' までお待ちください'); return true; }
+    return false;
+  }
+  function guessFail() {
+    PF.adm.qfail = (PF.adm.qfail || 0) + 1;
+    if (PF.adm.qfail >= 5) { PF.adm.qfail = 0; PF.adm.qlock = Date.now() + 10 * 60 * 1000; mmsg('5回間違えました。10分間は答えられません'); }
+    else mmsg('違います');
+    savePrefs();
+  }
+  function recovered() {
+    lockOff();
+    mStack = ['root', 'admin'];
+    render();
+    mmsg('ロックを解除しました。必要なら新しいPINを設定してください');
+  }
+  function checkGuess(value, salt, hash) {
+    if (guessBlocked()) return;
+    hashPin(value, salt).then(function (h) { if (h === hash) recovered(); else guessFail(); });
+  }
+  function patPad(label, size) {
+    size = size || 54;
+    var seq = [], box = mk('div', 'patpad'), dots = [], i;
+    box.setAttribute('role', 'group'); box.setAttribute('aria-label', label);
+    box.style.cssText = 'display:grid;grid-template-columns:repeat(3,' + size + 'px);gap:14px;touch-action:none;user-select:none;-webkit-user-select:none;padding:6px;justify-content:center';
+    function paint() {
+      dots.forEach(function (d, n) {
+        var k = seq.indexOf(n);
+        d.textContent = k >= 0 ? String(k + 1) : '';
+        d.style.background = k >= 0 ? 'var(--accent)' : 'transparent';
+        d.style.color = k >= 0 ? 'var(--accent-ink)' : 'var(--ink)';
+      });
+    }
+    function add(n) { if (seq.indexOf(n) < 0) { seq.push(n); paint(); } }
+    for (i = 0; i < 9; i++) {
+      var d = mk('button', 'patdot'); d.type = 'button'; d.setAttribute('data-n', String(i)); d.setAttribute('aria-label', (i + 1) + '番の点');
+      d.style.cssText = 'width:' + size + 'px;height:' + size + 'px;border-radius:50%;border:2px solid var(--edge);background:transparent;font:600 14px var(--mono);padding:0;touch-action:none';
+      box.appendChild(d); dots.push(d);
+    }
+    function hit(e) {
+      var el = document.elementFromPoint(e.clientX, e.clientY);
+      if (el && el.getAttribute && el.getAttribute('data-n') != null && box.contains(el)) add(+el.getAttribute('data-n'));
+    }
+    box.addEventListener('pointerdown', function (e) { hit(e); });
+    box.addEventListener('pointermove', function (e) { if (e.buttons & 1 || e.pointerType === 'touch') hit(e); });
+    box.addEventListener('click', function (e) { if (e.detail === 0 && e.target.getAttribute) { var n = e.target.getAttribute('data-n'); if (n != null) add(+n); } });
+    return { el: box, get: function () { return seq.join(''); }, len: function () { return seq.length; }, clear: function () { seq = []; paint(); } };
+  }
+  function b64(buf) { var a = new Uint8Array(buf), s = '', i; for (i = 0; i < a.length; i++) s += String.fromCharCode(a[i]); return btoa(s); }
+  function unb64(t) { var s = atob(t), a = new Uint8Array(s.length), i; for (i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+  function rnd(n) { var a = new Uint8Array(n); try { crypto.getRandomValues(a); } catch (e) { for (var i = 0; i < n; i++) a[i] = Math.floor(Math.random() * 256); } return a; }
+  function bioOk() { return !!(window.PublicKeyCredential && navigator.credentials && navigator.credentials.create && window.isSecureContext); }
+  function confirmNote() { note('確認用に同じものをもう一度入力してください'); }
+  function pwBlock() {
+    var a = input('', { max: 32, label: 'パスワード' }); a.type = 'password'; a.placeholder = 'パスワード（4〜32文字）'; a.setAttribute('autocomplete', 'new-password');
+    confirmNote();
+    var b = input('', { max: 32, label: 'パスワードの確認' }); b.type = 'password'; b.placeholder = 'もう一度同じパスワード'; b.setAttribute('autocomplete', 'new-password');
+    return {
+      filled: function () { return a.value !== '' || b.value !== ''; },
+      check: function () { return a.value.length < 4 ? 'パスワードは4文字以上にしてください' : a.value !== b.value ? '確認用のパスワードが一致しません' : ''; },
+      save: function (adm) { var salt = newId(); return hashPin(a.value, salt).then(function (h) { adm.psalt = salt; adm.phash = h; }); }
+    };
+  }
+  function patBlock() {
+    note('9つの点を、好きな順に4点以上なぞってください。（タップで順に押してもOK）');
+    var c1 = mk('div', ''), c2 = mk('div', '');
+    c1.style.cssText = c2.style.cssText = 'display:flex;justify-content:center';
+    var p1 = patPad('1回目'), p2 = patPad('確認用');
+    note('1回目');
+    c1.appendChild(p1.el); mBody.appendChild(c1);
+    note('確認用に同じものをもう一度なぞってください');
+    c2.appendChild(p2.el); mBody.appendChild(c2);
+    actions([{ t: 'やり直し', fn: function () { p1.clear(); p2.clear(); mmsg(''); } }]);
+    return {
+      filled: function () { return p1.len() > 0 || p2.len() > 0; },
+      check: function () { return p1.len() < 4 ? 'パターンは4点以上なぞってください' : p1.get() !== p2.get() ? 'パターンが確認用と一致しません' : ''; },
+      save: function (adm) { var salt = newId(); return hashPin(p1.get(), salt).then(function (h) { adm.patsalt = salt; adm.pathash = h; }); }
+    };
+  }
+  function regBio() {
+    return navigator.credentials.create({ publicKey: {
+      challenge: rnd(32), rp: { name: 'Play on Sound' },
+      user: { id: rnd(16), name: 'owner', displayName: 'owner' },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' },
+      timeout: 60000
+    } }).then(function (c) { return b64(c.rawId); });
+  }
+  function bioBlock() {
+    var cred = '';
+    if (!bioOk()) {
+      text('この表示では生体認証を使えません。HTTPSで開いたページ（GitHub公開版など）で、対応した端末をお使いください。');
+      return { filled: function () { return false; }, check: function () { return ''; }, save: function () { return Promise.resolve(); } };
+    }
+    var st = mk('p', 'mtext', '未登録'); mBody.appendChild(st);
+    actions([{ t: '端末の認証で登録する', fn: function () {
+      mmsg('端末の認証を待っています…');
+      regBio().then(function (id) { cred = id; st.textContent = '登録しました（「ロックを有効にする」で確定します）'; mmsg(''); })
+        .catch(function () { mmsg('登録できませんでした（端末が対応していない、または中止されました）'); });
+    } }]);
+    return {
+      filled: function () { return !!cred; },
+      check: function () { return ''; },
+      save: function (adm) { adm.cred = cred; return Promise.resolve(); }
+    };
+  }
+  SCREENS.adminpw = function () {
+    if (!PF.adm.on || !adminOpen) { backMenu(); return; }
+    text(PF.adm.phash ? 'パスワードは設定済みです。変更する場合は、新しいパスワードを入力してください。' : 'パスワードを決めておくと、PINを忘れたときにそれを入力してロックを解除できます。（4〜32文字）');
+    var pb = pwBlock();
+    actions([{ t: '保存', cls: 'primary', fn: function () {
+      var e = pb.check(); if (e) { mmsg(e); return; }
+      pb.save(PF.adm).then(function () { savePrefs(); render(); mmsg('パスワードを保存しました'); });
+    } }].concat(PF.adm.phash ? [{ t: '削除', fn: function () { PF.adm.psalt = ''; PF.adm.phash = ''; savePrefs(); render(); mmsg('削除しました'); } }] : []));
+    note(NOTE_PW);
+  };
+  SCREENS.adminpat = function () {
+    if (!PF.adm.on || !adminOpen) { backMenu(); return; }
+    text(PF.adm.pathash ? 'パターンは設定済みです。変更する場合は、新しいパターンを入力してください。' : 'PINを忘れたときに、なぞったパターンでロックを解除できます。');
+    var tb = patBlock();
+    actions([{ t: '保存', cls: 'primary', fn: function () {
+      var e = tb.check(); if (e) { mmsg(e); return; }
+      tb.save(PF.adm).then(function () { savePrefs(); render(); mmsg('パターンを保存しました'); });
+    } }].concat(PF.adm.pathash ? [{ t: '削除', fn: function () { PF.adm.patsalt = ''; PF.adm.pathash = ''; savePrefs(); render(); mmsg('削除しました'); } }] : []));
+    note(NOTE_PAT);
+  };
+  SCREENS.adminbio = function () {
+    if (!PF.adm.on || !adminOpen) { backMenu(); return; }
+    if (!bioOk()) { text('この表示では生体認証を使えません。HTTPSで開いたページ（GitHub公開版など）で、対応した端末をお使いください。'); note(NOTE_BIO); return; }
+    text(PF.adm.cred ? '生体認証は登録済みです。登録し直すこともできます。' : '登録すると、PINを忘れたときに、この端末の指紋・顔認証で解除できます。');
+    actions([{ t: PF.adm.cred ? '登録し直す' : '登録する', cls: 'primary', fn: function () {
+      mmsg('端末の認証を待っています…');
+      regBio().then(function (id) {
+        PF.adm.cred = id; savePrefs(); render(); mmsg('生体認証を登録しました');
+      }).catch(function () { mmsg('登録できませんでした（端末が対応していない、または中止されました）'); });
+    } }].concat(PF.adm.cred ? [{ t: '削除', fn: function () { PF.adm.cred = ''; savePrefs(); render(); mmsg('削除しました'); } }] : []));
+    note(NOTE_BIO);
+  };
+  SCREENS.adminfg = function () {
+    text('PINを忘れても、設定してある方法のどれかでロックを解除できます。プロジェクトは消えません。');
+    var any = false;
+    if (PF.adm.qhash) {
+      any = true;
+      head('秘密の質問');
+      text('質問：' + PF.adm.qtext);
+      var qa = input('', { max: 40, label: '答え' });
+      actions([{ t: '答えて解除', cls: 'primary', fn: function () { checkGuess(normAns(qa.value), PF.adm.qsalt, PF.adm.qhash); qa.value = ''; } }]);
+    }
+    if (PF.adm.phash) {
+      any = true;
+      head('パスワード');
+      var pw = input('', { max: 32, label: 'パスワード' }); pw.type = 'password';
+      actions([{ t: 'パスワードで解除', cls: 'primary', fn: function () { checkGuess(pw.value, PF.adm.psalt, PF.adm.phash); pw.value = ''; } }]);
+    }
+    if (PF.adm.pathash) {
+      any = true;
+      head('パターン');
+      var pp = patPad('パターン');
+      var wr = mk('div', ''); wr.style.cssText = 'display:flex;justify-content:center'; wr.appendChild(pp.el); mBody.appendChild(wr);
+      actions([{ t: 'パターンで解除', cls: 'primary', fn: function () { var v = pp.get(); pp.clear(); checkGuess(v, PF.adm.patsalt, PF.adm.pathash); } }, { t: 'やり直し', fn: function () { pp.clear(); } }]);
+    }
+    if (PF.adm.cred && bioOk()) {
+      any = true;
+      head('生体認証');
+      actions([{ t: '生体認証で解除', cls: 'primary', fn: function () {
+        mmsg('端末の認証を待っています…');
+        navigator.credentials.get({ publicKey: {
+          challenge: rnd(32), allowCredentials: [{ type: 'public-key', id: unb64(PF.adm.cred), transports: ['internal'] }],
+          userVerification: 'required', timeout: 60000
+        } }).then(function (c) {
+          if (c && b64(c.rawId) === PF.adm.cred) recovered(); else mmsg('認証できませんでした');
+        }).catch(function () { mmsg('認証できませんでした（中止、またはこの端末で登録したものではありません）'); });
+      } }]);
+    }
+    if (!any) note('秘密の質問・パスワード・パターン・生体認証は、まだ設定されていません。（PINを解除できる状態で、管理者モードから設定できます）');
+    head('復旧コードで解除');
+    var rc = input('', { max: 16, label: '復旧コード' });
+    actions([{ t: '復旧コードで解除', cls: 'primary', fn: function () {
+      if (!PF.adm.rhash) { mmsg('このロックには復旧コードがありません。下の方法をお使いください'); return; }
+      hashPin(normCode(rc.value), PF.adm.rsalt).then(function (h) {
+        if (h === PF.adm.rhash) recovered(); else { rc.value = ''; mmsg('復旧コードが違います'); }
+      });
+    } }]);
+    head('どれも使えない場合');
+    var w = PF.adm.wait, now = Date.now();
+    if (!w) {
+      text('解除を申請すると、24時間後に解除できるようになります（誤操作や、他の人による解除を防ぐための待ち時間です）。');
+      actions([{ t: '解除を申請する', fn: function () {
+        PF.adm.wait = Date.now() + 24 * 3600 * 1000; savePrefs(); render(); mmsg('申請しました。24時間後に、この画面から解除できます');
+      } }]);
+    } else if (now < w) {
+      text(fmtDate(w) + ' 以降に解除できます。それまでは、このまま待ってください。');
+      actions([{ t: '申請を取り消す', fn: function () { PF.adm.wait = 0; savePrefs(); render(); mmsg('申請を取り消しました'); } }]);
+    } else {
+      text('待ち時間が過ぎました。ロックを解除できます。');
+      actions([{ t: 'ロックを解除する', cls: 'primary', fn: recovered }]);
+    }
+    note('PINを思い出した場合は、管理者モードの画面でPINを入力すれば、申請は自動で取り消されます。');
+  };
   SCREENS.admin = function () {
     if (!PF.adm.on) {
       text('PIN（4〜8桁の数字）を決めると、編集・Spotifyの検索・新規作成・保存・削除をロックできます。演奏と音量の操作はそのまま使えます。');
+      head('PIN');
       var p1 = input('', { pin: true, max: 8, label: 'PIN' });
+      confirmNote();
       var p2 = input('', { pin: true, max: 8, label: 'PINの確認' });
+      note(NOTE_PIN);
+      head('PINを忘れた場合の救済方法（任意）');
+      note('ここで設定しておくと、PINを忘れたときにロックを解除できます。必要なものだけ設定してください。後から設定することもできます。');
+      head('秘密の質問');
+      var qb = qaBlock();
+      note(NOTE_Q);
+      head('パスワード');
+      var pb = pwBlock();
+      note(NOTE_PW);
+      head('パターン（3×3）');
+      var tb = patBlock();
+      note(NOTE_PAT);
+      head('生体認証');
+      var bb = bioBlock();
+      note(NOTE_BIO);
+      var blocks = [
+        { filled: function () { return qb.a().trim() !== ''; }, check: function () { return qb.q() ? '' : '秘密の質問を入力してください'; }, save: function () { return saveQA(qb.q(), qb.a()); } },
+        pb, tb, bb
+      ];
       actions([{ t: 'ロックを有効にする', cls: 'primary', fn: function () {
         if (!/^\d{4,8}$/.test(p1.value)) { mmsg('PINは4〜8桁の数字にしてください'); return; }
         if (p1.value !== p2.value) { mmsg('確認用のPINが一致しません'); return; }
+        var use = blocks.filter(function (b) { return b.filled(); }), k, e;
+        for (k = 0; k < use.length; k++) { e = use[k].check(); if (e) { mmsg(e); return; } }
         var salt = newId();
         hashPin(p1.value, salt).then(function (h) {
-          PF.adm = { on: true, salt: salt, hash: h };
+          PF.adm = { on: true, salt: salt, hash: h, rsalt: '', rhash: '', wait: 0, qtext: '', qsalt: '', qhash: '', qlock: 0, qfail: 0, psalt: '', phash: '', patsalt: '', pathash: '', cred: '' };
+          return issueCode();
+        }).then(function () {
+          return use.reduce(function (pr, b) { return pr.then(function () { return b.save(PF.adm); }); }, Promise.resolve());
+        }).then(function () {
           savePrefs();
           adminOpen = true;
           applyLock();
           render();
-          mmsg('設定しました。「今すぐロック」でロックします');
+          mmsg('設定しました。復旧コードを必ずメモしてください');
         });
       } }]);
-      note('これは誤操作を防ぐための簡易ロックです。PINを忘れた場合は、ブラウザのサイトデータを消去するまで解除できません（プロジェクトも消えます）。');
+      note('PINを設定すると「復旧コード」が表示されます。PINを忘れたときは、設定した救済方法、復旧コード、または24時間の待ち時間で解除できます。');
     } else if (!adminOpen) {
       text('編集などがロックされています。PINを入力すると解除できます。');
       var pi = input('', { pin: true, max: 8, label: 'PIN' });
@@ -2136,6 +2619,7 @@ a.mrow { text-decoration: none; }
         hashPin(pi.value, PF.adm.salt).then(function (h) {
           if (h === PF.adm.hash) {
             adminOpen = true;
+            PF.adm.wait = 0; savePrefs();
             applyLock();
             render();
             mmsg('ロックを解除しました');
@@ -2145,13 +2629,27 @@ a.mrow { text-decoration: none; }
           }
         });
       } }]);
+      var gf2 = group();
+      row(gf2, 'PINを忘れた場合', '復旧コード、または24時間待って解除', function () { go('adminfg'); });
     } else {
+      if (freshCode) {
+        head('復旧コード（この画面でしか表示されません）');
+        mBody.appendChild(mk('p', 'mtext', freshCode)).style.cssText = 'font-family:var(--mono);font-size:22px;letter-spacing:.12em;font-weight:600;color:var(--accent)';
+        note('PINを忘れたときに必要です。紙などに書き留めて、他の人に見られない場所に保管してください。');
+        actions([{ t: 'メモしました', cls: 'primary', fn: function () { freshCode = ''; render(); } }]);
+      }
       var g = group();
+      row(g, '秘密の質問', PF.adm.qhash ? '設定済み：' + PF.adm.qtext : '未設定。PINを忘れたときの解除に使います', function () { go('adminq'); });
+      row(g, 'パスワード', PF.adm.phash ? '設定済み' : '未設定。PINを忘れたときの解除に使います', function () { go('adminpw'); });
+      row(g, 'パターン', PF.adm.pathash ? '設定済み' : '未設定。PINを忘れたときの解除に使います', function () { go('adminpat'); });
+      row(g, '生体認証', PF.adm.cred ? '登録済み' : '未登録。指紋・顔認証で解除します', function () { go('adminbio'); });
+      row(g, '復旧コードを新しく発行', '以前のコードは使えなくなります', function () {
+        issueCode().then(function () { render(); mmsg('新しい復旧コードを発行しました'); });
+      }, { noChev: true });
       row(g, '今すぐロック', 'メニューを閉じてロックします', function () { adminOpen = false; applyLock(); closeMenu(); setMsg('ロックしました'); }, { noChev: true });
       row(g, 'ロック機能をやめる', 'PINを削除します', function () {
-        PF.adm = { on: false, salt: '', hash: '' };
-        savePrefs();
-        applyLock();
+        lockOff();
+        adminOpen = true;
         render();
         mmsg('ロック機能をやめました');
       }, { noChev: true });
@@ -2164,6 +2662,7 @@ a.mrow { text-decoration: none; }
       'ループ、再生位置、フェードイン・アウト、バランス、3バンドのイコライザ',
       '音楽のクロスフェード、フェード停止、全停止',
       'マスター・音楽・効果音の音量とフェード時間',
+      'アプリ全体のイコライザー（63Hz〜16kHzの9バンド・プリセット・マイプリセット保存・UHQ/ホール/立体音響つき。ON/OFFスイッチで使わないこともできます）',
       'Spotifyの曲・プレイリストのパッド（ページ内のプレーヤー、またはアプリで開く。音はSpotify側で再生）',
       '複数プロジェクトの保存・切り替え・複製',
       'PINによる編集ロック'
@@ -2211,6 +2710,7 @@ a.mrow { text-decoration: none; }
   function openMenu() {
     if (editMode === false) { /* keep */ }
     mStack = ['root'];
+    freshCode = '';
     lastScreen = '';
     $('menu').hidden = false;
     document.body.classList.add('modal');
@@ -2267,7 +2767,6 @@ a.mrow { text-decoration: none; }
   applyLock();
 })();
 </script>
-
 <script>
 /* offline support: cache the app files so it also opens without a connection */
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {

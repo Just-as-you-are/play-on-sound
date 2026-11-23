@@ -1,6 +1,6 @@
 /* Play on Sound service worker: keeps the app usable offline.
    Change CACHE when you publish a new version so everyone gets the update. */
-var CACHE = 'play-on-sound-v3';
+var CACHE = 'play-on-sound-v16';
 var FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', function (e) {
